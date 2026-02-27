@@ -62,7 +62,40 @@ This project is built with:
 
 ## How can I deploy this project?
 
+
+### Deploy with Lovable
+
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+
+---
+
+### Manual Deployment (Static Hosting)
+
+You can deploy this project as a static site using any static hosting provider (e.g., Vercel, Netlify, GitHub Pages, Firebase Hosting, Cloudflare Pages, etc.).
+
+#### 1. Build the project
+
+```sh
+npm run build
+```
+
+This will generate a `dist/` folder containing the production-ready static files.
+
+#### 2. Preview locally (optional)
+
+```sh
+npm run preview
+```
+
+#### 3. Deploy to your provider
+
+- **Vercel**: Import your repo in Vercel, set the build command to `npm run build` and output directory to `dist`.
+- **Netlify**: Import your repo in Netlify, set the build command to `npm run build` and publish directory to `dist`.
+- **Other hosts**: Upload the contents of the `dist/` folder to your static hosting provider.
+
+For more details, see the [Vite deployment guide](https://vitejs.dev/guide/static-deploy.html).
+
+---
 
 ## Can I connect a custom domain to my Lovable project?
 
