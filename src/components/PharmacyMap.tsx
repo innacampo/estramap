@@ -91,7 +91,7 @@ interface PharmacyMapProps {
 }
 
 const PharmacyMap = ({ reports, highlightedId, onHover }: PharmacyMapProps) => {
-  const center: [number, number] = [34.0922, -118.3280];
+  const center: [number, number] = [33.7900, -84.3880];
 
   return (
     <MapContainer
