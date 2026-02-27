@@ -28,7 +28,7 @@ export interface OnlineReport {
 export const localReports: LocalReport[] = [
   {
     id: "l1",
-    pharmacyName: "CVS Pharmacy - Midtown",
+    pharmacyName: " [test] CVS Pharmacy - Midtown",
     address: "1520 Avenue Pl Ste B-100, Atlanta, GA 30329",
     distance: "0.8 mi",
     medication: "Dotti",
@@ -43,7 +43,7 @@ export const localReports: LocalReport[] = [
   },
   {
     id: "l2",
-    pharmacyName: "Walgreens - Piedmont",
+    pharmacyName: " [test] Walgreens - Piedmont",
     address: "595 Piedmont Ave NE, Atlanta, GA 30308",
     distance: "1.2 mi",
     medication: "Generic Estradiol",
@@ -58,7 +58,7 @@ export const localReports: LocalReport[] = [
   },
   {
     id: "l3",
-    pharmacyName: "Publix Pharmacy - West Peachtree",
+    pharmacyName: " [test] Publix Pharmacy - West Peachtree",
     address: "950 W Peachtree St NW, Atlanta, GA 30309",
     distance: "3.4 mi",
     medication: "Climara",
@@ -73,7 +73,7 @@ export const localReports: LocalReport[] = [
   },
   {
     id: "l4",
-    pharmacyName: "Costco Pharmacy - Cumberland",
+    pharmacyName: " [test] Costco Pharmacy - Cumberland",
     address: "2900 Cumberland Pkwy SE, Atlanta, GA 30339",
     distance: "4.1 mi",
     medication: "Generic Estradiol",
@@ -88,7 +88,7 @@ export const localReports: LocalReport[] = [
   },
   {
     id: "l5",
-    pharmacyName: "Kroger Pharmacy - Glenwood",
+    pharmacyName: " [test] Kroger Pharmacy - Glenwood",
     address: "800 Glenwood Ave SE, Atlanta, GA 30312",
     distance: "2.0 mi",
     medication: "Vivelle-Dot",
@@ -106,7 +106,7 @@ export const localReports: LocalReport[] = [
 export const onlineReports: OnlineReport[] = [
   {
     id: "o1",
-    pharmacyName: "Amazon Pharmacy",
+    pharmacyName: " [test] Amazon Pharmacy",
     medication: "Generic Estradiol Patch",
     dose: "0.05mg",
     dateReported: "Feb 25, 2026",
@@ -114,7 +114,7 @@ export const onlineReports: OnlineReport[] = [
   },
   {
     id: "o2",
-    pharmacyName: "Cost Plus Drugs",
+    pharmacyName: " [test] Cost Plus Drugs",
     medication: "Generic Estradiol Patch",
     dose: "0.1mg",
     dateReported: "Feb 24, 2026",
@@ -122,7 +122,7 @@ export const onlineReports: OnlineReport[] = [
   },
   {
     id: "o3",
-    pharmacyName: "Honeybee Health",
+    pharmacyName: " [test] Honeybee Health",
     medication: "Estradiol Transdermal Patch",
     dose: "0.075mg",
     dateReported: "Feb 26, 2026",
