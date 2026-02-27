@@ -51,6 +51,12 @@ const LocalReportCard = ({ report, isHighlighted, onHover }: LocalReportCardProp
               {report.medication} {report.dose}
             </p>
 
+            {report.notes && (
+              <p className="mt-2 text-sm text-muted-foreground italic">
+                "{report.notes}"
+              </p>
+            )}
+
             <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>Reported {report.reportedAgo} by a community member</span>
