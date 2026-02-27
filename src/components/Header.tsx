@@ -14,8 +14,8 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange }: HeaderProps) => {
       <div className="container mx-auto flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-2">
           <MapPin className="h-7 w-7 text-primary" strokeWidth={2.5} />
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
-            EstraMap
+          <h1 className="text-2xl font-bold tracking-tight text-primary">EstraMap - {
+
           </h1>
         </div>
 
@@ -27,8 +27,8 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange }: HeaderProps) => {
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="pl-10"
-              aria-label="Search for patches near your location"
-            />
+              aria-label="Search for patches near your location" />
+
           </div>
           <Button onClick={onOpenReport} className="shrink-0 gap-1.5">
             <Plus className="h-4 w-4" />
@@ -37,8 +37,8 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange }: HeaderProps) => {
           </Button>
         </div>
       </div>
-    </header>
-  );
+    </header>);
+
 };
 
 export default Header;
