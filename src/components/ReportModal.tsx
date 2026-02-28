@@ -30,9 +30,11 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
   const [pharmacyType, setPharmacyType] = useState<PharmacyType>("local");
   const [pharmacyName, setPharmacyName] = useState("");
   const [address, setAddress] = useState("");
+  const [websiteName, setWebsiteName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [dose, setDose] = useState("");
   const [status, setStatus] = useState<StockStatus | "">("");
+  const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = () => {
@@ -41,9 +43,11 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
       setSubmitted(false);
       setPharmacyName("");
       setAddress("");
+      setWebsiteName("");
       setWebsiteUrl("");
       setDose("");
       setStatus("");
+      setNotes("");
       onOpenChange(false);
     }, 2000);
   };
@@ -51,7 +55,9 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
   const isValid =
     dose &&
     status &&
-    (pharmacyType === "local" ? pharmacyName && address : websiteUrl);
+    (pharmacyType === "local"
+      ? pharmacyName && address
+      : websiteName && websiteUrl);
 
   if (submitted) {
     return (
@@ -128,11 +134,19 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
                 />
               </div>
             ) : (
-              <Input
-                placeholder="Website URL or name (e.g., Amazon Pharmacy)"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-              />
+              <div className="space-y-3">
+                <Input
+                  placeholder="Website name (e.g., Amazon Pharmacy)"
+                  value={websiteName}
+                  onChange={(e) => setWebsiteName(e.target.value)}
+                />
+                <Input
+                  placeholder="Website URL (e.g., https://pharmacy.com)"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  type="url"
+                />
+              </div>
             )}
           </div>
 
@@ -161,6 +175,7 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
             </div>
           </div>
 
+
           {/* Step 4 */}
           <div className="space-y-2">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -184,6 +199,20 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
                 ⚠️ Low Stock / Few Left
               </Button>
             </div>
+          </div>
+
+          {/* Step 5 */}
+          <div className="space-y-2">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+              Step 5 — Notes (optional)
+            </Label>
+            <textarea
+              className="w-full min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              placeholder="Add any extra details, e.g. hours, restrictions, or tips."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={500}
+            />
           </div>
 
           <Button
