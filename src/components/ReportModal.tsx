@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,19 @@ interface ReportModalProps {
 type PharmacyType = "local" | "online";
 type StockStatus = "in-stock" | "low-stock";
 
+// CRITICAL FIX: Ensure Google's floating suggestion dropdown renders above the Dialog overlay
+// AND has pointer-events: auto so Shadcn's modal background lock doesn't swallow your clicks!
+const pacStyle =
+  typeof document !== "undefined" &&
+  !document.getElementById("pac-z-index-fix")
+    ? (() => {
+        const s = document.createElement("style");
+        s.id = "pac-z-index-fix";
+        s.textContent = ".pac-container { z-index: 9999 !important; pointer-events: auto !important; }";
+        document.head.appendChild(s);
+      })()
+    : null;
+
 const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps) => {
   const [pharmacyType, setPharmacyType] = useState<PharmacyType>("local");
   const [pharmacyName, setPharmacyName] = useState("");
@@ -42,6 +55,9 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Use a ref to target the Autocomplete input directly for clearing
+  const autocompleteRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async () => {
     if (!status) return;
@@ -71,6 +87,12 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
         setAddress("");
         setLat(null);
         setLng(null);
+        
+        // Manually clear the Google input text
+        if (autocompleteRef.current) {
+           autocompleteRef.current.value = "";
+        }
+        
         setWebsiteName("");
         setWebsiteUrl("");
         setDose("");
@@ -91,7 +113,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
   if (submitted) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md rounded-xl">
           <div className="flex flex-col items-center gap-4 py-8 text-center">
             <CheckCircle className="h-12 w-12 text-in-stock" />
             <h3 className="text-xl font-semibold text-card-foreground">
@@ -108,15 +130,23 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="w-[calc(100%-2rem)] sm:max-w-lg rounded-xl max-h-[90dvh] overflow-y-auto"
+        onInteractOutside={(e) => {
+          // Prevent the Dialog from closing when clicking a Google autocomplete suggestion
+          const target = e.target as HTMLElement;
+          if (target.closest(".pac-container")) e.preventDefault();
+        }}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          <DialogTitle className="text-xl">Report Found Stock</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">Report Found Stock</DialogTitle>
+          <DialogDescription className="text-sm">
             Help others find estradiol patches by sharing what you found.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 pt-2">
+        <div className="space-y-4 pt-1">
           {/* Step 1 */}
           <div className="space-y-2">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -126,20 +156,20 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
               <Button
                 type="button"
                 variant={pharmacyType === "local" ? "default" : "outline"}
-                className="flex-1 gap-2"
+                className="flex-1 gap-1.5 text-sm"
                 onClick={() => setPharmacyType("local")}
               >
-                <Store className="h-4 w-4" />
-                Local Pharmacy
+                <Store className="h-4 w-4 shrink-0" />
+                Local
               </Button>
               <Button
                 type="button"
                 variant={pharmacyType === "online" ? "default" : "outline"}
-                className="flex-1 gap-2"
+                className="flex-1 gap-1.5 text-sm"
                 onClick={() => setPharmacyType("online")}
               >
-                <Globe className="h-4 w-4" />
-                Online Pharmacy
+                <Globe className="h-4 w-4 shrink-0" />
+                Online
               </Button>
             </div>
           </div>
@@ -150,7 +180,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
               Step 2 — Pharmacy details
             </Label>
             {pharmacyType === "local" ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Input
                   placeholder="Pharmacy name (e.g., CVS, Walgreens)"
                   value={pharmacyName}
@@ -158,15 +188,21 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
                 />
                 <Autocomplete
                   apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                  value={address}
-                  onChange={e => setAddress(e.target.value)}
-                  onPlaceSelected={place => {
-                    setAddress(place.formatted_address || "");
+                  ref={autocompleteRef as any}
+                  onPlaceSelected={(place) => {
+                    const formatted = place.formatted_address || "";
+                    setAddress(formatted);
                     const location = place.geometry?.location;
                     if (location) {
                       setLat(location.lat());
                       setLng(location.lng());
                     }
+                  }}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    setAddress(e.target.value);
+                    // Clear the saved coords if they keep typing after picking an address
+                    setLat(null);
+                    setLng(null);
                   }}
                   options={{ types: ["address"] }}
                   placeholder="Address or zip code"
@@ -174,7 +210,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
                 />
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Input
                   placeholder="Website name (e.g., Amazon Pharmacy)"
                   value={websiteName}
@@ -195,11 +231,11 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Step 3 — Medication details
             </Label>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Input value="Estradiol Patch" disabled className="bg-muted" />
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <Input value="Estradiol Patch" disabled className="bg-muted truncate" />
               </div>
-              <div className="w-32">
+              <div className="w-28 shrink-0">
                 <Select value={dose} onValueChange={setDose}>
                   <SelectTrigger>
                     <SelectValue placeholder="Dose" />
@@ -220,11 +256,11 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">
               Step 4 — Stock status
             </Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col xs:flex-row gap-2">
               <Button
                 type="button"
                 variant={status === "in-stock" ? "default" : "outline"}
-                className={`flex-1 ${status === "in-stock" ? "bg-in-stock hover:bg-in-stock/90 text-white" : ""}`}
+                className={`flex-1 text-sm ${status === "in-stock" ? "bg-in-stock hover:bg-in-stock/90 text-white" : ""}`}
                 onClick={() => setStatus("in-stock")}
               >
                 ✅ In Stock
@@ -232,7 +268,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
               <Button
                 type="button"
                 variant={status === "low-stock" ? "default" : "outline"}
-                className={`flex-1 ${status === "low-stock" ? "bg-low-stock hover:bg-low-stock/90 text-white" : ""}`}
+                className={`flex-1 text-sm ${status === "low-stock" ? "bg-low-stock hover:bg-low-stock/90 text-white" : ""}`}
                 onClick={() => setStatus("low-stock")}
               >
                 ⚠️ Low Stock / Few Left
@@ -246,7 +282,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
               Step 5 — Notes (optional)
             </Label>
             <textarea
-              className="w-full min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="w-full min-h-[56px] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
               placeholder="Add any extra details, e.g. hours, restrictions, or tips."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
