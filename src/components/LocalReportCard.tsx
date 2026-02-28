@@ -2,15 +2,20 @@ import { ThumbsUp, ThumbsDown, MapPin, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { LocalReport } from "@/data/mockData";
+import type { Tables } from "@/integrations/supabase/types";
+import { formatDistanceToNow } from "date-fns";
+
+type PharmacyReport = Tables<"pharmacy_reports">;
 
 interface LocalReportCardProps {
-  report: LocalReport;
+  report: PharmacyReport;
   isHighlighted: boolean;
   onHover: (id: string | null) => void;
 }
 
 const LocalReportCard = ({ report, isHighlighted, onHover }: LocalReportCardProps) => {
+  const timeAgo = formatDistanceToNow(new Date(report.created_at), { addSuffix: true });
+
   return (
     <Card
       className={`transition-all duration-200 cursor-pointer ${
@@ -21,14 +26,14 @@ const LocalReportCard = ({ report, isHighlighted, onHover }: LocalReportCardProp
       onMouseEnter={() => onHover(report.id)}
       onMouseLeave={() => onHover(null)}
       role="article"
-      aria-label={`${report.pharmacyName} - ${report.medication} ${report.dose} - ${report.status === "in-stock" ? "In Stock" : "Low Stock"}`}
+      aria-label={`${report.pharmacy_name} - ${report.medication} ${report.dose} - ${report.status === "in-stock" ? "In Stock" : "Low Stock"}`}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-card-foreground truncate">
-                {report.pharmacyName}
+                {report.pharmacy_name}
               </h3>
               <Badge
                 className={
@@ -41,11 +46,12 @@ const LocalReportCard = ({ report, isHighlighted, onHover }: LocalReportCardProp
               </Badge>
             </div>
 
-            <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{report.address}</span>
-              <span className="shrink-0 ml-1">· {report.distance}</span>
-            </div>
+            {report.address && (
+              <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{report.address}</span>
+              </div>
+            )}
 
             <p className="mt-2 text-sm font-medium text-accent-foreground">
               {report.medication} {report.dose}
@@ -59,7 +65,7 @@ const LocalReportCard = ({ report, isHighlighted, onHover }: LocalReportCardProp
 
             <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
-              <span>Reported {report.reportedAgo} by a community member</span>
+              <span>Reported {timeAgo} by a community member</span>
             </div>
           </div>
         </div>
