@@ -18,16 +18,18 @@ import {
 } from "@/components/ui/select";
 import { Store, Globe, CheckCircle } from "lucide-react";
 import Autocomplete from "react-google-autocomplete";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onReportSubmitted?: () => void;
 }
 
 type PharmacyType = "local" | "online";
 type StockStatus = "in-stock" | "low-stock";
 
-const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
+const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps) => {
   const [pharmacyType, setPharmacyType] = useState<PharmacyType>("local");
   const [pharmacyName, setPharmacyName] = useState("");
   const [address, setAddress] = useState("");
@@ -39,21 +41,44 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
   const [status, setStatus] = useState<StockStatus | "">("");
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setPharmacyName("");
-      setAddress("");
-      setLat(null);
-      setLng(null);
-      setWebsiteUrl("");
-      setDose("");
-      setStatus("");
-      setNotes("");
-      onOpenChange(false);
-    }, 2000);
+  const handleSubmit = async () => {
+    if (!status) return;
+    setSubmitting(true);
+
+    const { error } = await supabase.from("pharmacy_reports").insert({
+      type: pharmacyType,
+      pharmacy_name: pharmacyType === "local" ? pharmacyName : websiteName,
+      address: pharmacyType === "local" ? address : null,
+      website_url: pharmacyType === "online" ? websiteUrl : null,
+      medication: "Estradiol Patch",
+      dose,
+      status,
+      notes: notes || null,
+      lat: pharmacyType === "local" ? lat : null,
+      lng: pharmacyType === "local" ? lng : null,
+    });
+
+    setSubmitting(false);
+
+    if (!error) {
+      setSubmitted(true);
+      onReportSubmitted?.();
+      setTimeout(() => {
+        setSubmitted(false);
+        setPharmacyName("");
+        setAddress("");
+        setLat(null);
+        setLng(null);
+        setWebsiteName("");
+        setWebsiteUrl("");
+        setDose("");
+        setStatus("");
+        setNotes("");
+        onOpenChange(false);
+      }, 2000);
+    }
   };
 
   const isValid =
@@ -188,7 +213,6 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
             </div>
           </div>
 
-
           {/* Step 4 */}
           <div className="space-y-2">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -230,11 +254,11 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
 
           <Button
             onClick={handleSubmit}
-            disabled={!isValid}
+            disabled={!isValid || submitting}
             className="w-full"
             size="lg"
           >
-            Share with the Community
+            {submitting ? "Submitting..." : "Share with the Community"}
           </Button>
         </div>
       </DialogContent>

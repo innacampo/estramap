@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Map } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import LocalReportCard from "@/components/LocalReportCard";
 import OnlineReportCard from "@/components/OnlineReportCard";
@@ -7,13 +8,31 @@ import PharmacyMap from "@/components/PharmacyMap";
 import ReportModal from "@/components/ReportModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { localReports, onlineReports } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+
+type PharmacyReport = Tables<"pharmacy_reports">;
 
 const Index = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
+
+  const { data: reports = [], refetch } = useQuery({
+    queryKey: ["pharmacy_reports"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pharmacy_reports")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as PharmacyReport[];
+    },
+  });
+
+  const localReports = reports.filter((r) => r.type === "local");
+  const onlineReports = reports.filter((r) => r.type === "online");
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -105,7 +124,7 @@ const Index = () => {
         </p>
       </footer>
 
-      <ReportModal open={reportOpen} onOpenChange={setReportOpen} />
+      <ReportModal open={reportOpen} onOpenChange={setReportOpen} onReportSubmitted={refetch} />
     </div>
   );
 };

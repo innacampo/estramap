@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { LocalReport } from "@/data/mockData";
+import type { Tables } from "@/integrations/supabase/types";
+
+type PharmacyReport = Tables<"pharmacy_reports">;
 
 // Fix default marker icons in leaflet + bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -49,7 +51,7 @@ function MarkerItem({
   isHighlighted,
   onHover,
 }: {
-  report: LocalReport;
+  report: PharmacyReport;
   isHighlighted: boolean;
   onHover: (id: string | null) => void;
 }) {
@@ -63,6 +65,8 @@ function MarkerItem({
     }
   }, [isHighlighted]);
 
+  if (report.lat == null || report.lng == null) return null;
+
   return (
     <Marker
       ref={markerRef}
@@ -75,7 +79,7 @@ function MarkerItem({
     >
       <Popup>
         <div className="text-sm">
-          <p className="font-semibold">{report.pharmacyName}</p>
+          <p className="font-semibold">{report.pharmacy_name}</p>
           <p>{report.medication} {report.dose}</p>
           <p className="text-xs mt-1">{report.status === "in-stock" ? "✅ In Stock" : "⚠️ Low Stock"}</p>
         </div>
@@ -85,7 +89,7 @@ function MarkerItem({
 }
 
 interface PharmacyMapProps {
-  reports: LocalReport[];
+  reports: PharmacyReport[];
   highlightedId: string | null;
   onHover: (id: string | null) => void;
 }
