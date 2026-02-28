@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Store, Globe, CheckCircle } from "lucide-react";
+import Autocomplete from "react-google-autocomplete";
 
 interface ReportModalProps {
   open: boolean;
@@ -30,6 +31,8 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
   const [pharmacyType, setPharmacyType] = useState<PharmacyType>("local");
   const [pharmacyName, setPharmacyName] = useState("");
   const [address, setAddress] = useState("");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [websiteName, setWebsiteName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [dose, setDose] = useState("");
@@ -43,7 +46,8 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
       setSubmitted(false);
       setPharmacyName("");
       setAddress("");
-      setWebsiteName("");
+      setLat(null);
+      setLng(null);
       setWebsiteUrl("");
       setDose("");
       setStatus("");
@@ -127,10 +131,19 @@ const ReportModal = ({ open, onOpenChange }: ReportModalProps) => {
                   value={pharmacyName}
                   onChange={(e) => setPharmacyName(e.target.value)}
                 />
-                <Input
+                <Autocomplete
+                  apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                  onPlaceSelected={(place) => {
+                    setAddress(place.formatted_address || "");
+                    const location = place.geometry?.location;
+                    if (location) {
+                      setLat(location.lat());
+                      setLng(location.lng());
+                    }
+                  }}
+                  options={{ types: ["address"] }}
                   placeholder="Address or zip code"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
                 />
               </div>
             ) : (
