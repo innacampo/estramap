@@ -158,7 +158,9 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
                 />
                 <Autocomplete
                   apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                  onPlaceSelected={(place) => {
+                  value={address}
+                  onChange={e => setAddress(e.target.value)}
+                  onPlaceSelected={place => {
                     setAddress(place.formatted_address || "");
                     const location = place.geometry?.location;
                     if (location) {
