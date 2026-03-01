@@ -1,106 +1,164 @@
-# Welcome to your Lovable project
+# EstraMap
 
-## Project info
+**Community‑powered estradiol patch tracker**
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+EstraMap is a lightweight web application that helps people locate in‑stock
+estradiol patches when pharmacies are running low.  Data is crowd‑sourced from
+volunteer reports and displayed in a searchable feed alongside an interactive
+map.  The project can run purely client‑side (using Supabase and Google
+APIs directly) or with an optional Express+Supabase proxy for increased
+security and added helper endpoints.
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-
-### Deploy with Lovable
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+> ⚠️ This repository was originally created as part of a [lovable.ai](https://lovable.ai)
+> design exercise.  All functionality is available in a production‑ready form
+> and the code is fully open‑source, but you should still audit the backend
+> before deploying for real‑world use.
 
 ---
 
-### Manual Deployment (Static Hosting)
+## Features
 
-You can deploy this project as a static site using any static hosting provider (e.g., Vercel, Netlify, GitHub Pages, Firebase Hosting, Cloudflare Pages, etc.).
+- Searchable feed of **local pharmacy reports** (name, address, medication, dose,
+  stock status, time ago)
+- **Online/mailer reports** (Amazon Pharmacy, Honeybee, etc.)
+- Color‑coded status badges (green = in stock, yellow = low stock, red = out)
+- Interactive **map view** powered by React‑Leaflet + OpenStreetMap
+- Voting system to confirm whether a report is still accurate
+- “Report stock” modal with step‑by‑step form and optional GPS lookup
+- Support for both a simple static build or a full server‑side API proxy
+- Responsive and accessible UI built with Tailwind CSS and shadcn/ui
+- Mock data seeded on first load to make the site feel alive
+- Optional Supabase backend with upvotes/downvotes and Google Places proxy
+- Simple Express server providing a `/api/*` JSON API and static file host
 
-#### 1. Build the project
+## Tech stack
 
-```sh
-npm run build
-```
-
-This will generate a `dist/` folder containing the production-ready static files.
-
-#### 2. Preview locally (optional)
-
-```sh
-npm run preview
-```
-
-#### 3. Deploy to your provider
-
-- **Vercel**: Import your repo in Vercel, set the build command to `npm run build` and output directory to `dist`.
-- **Netlify**: Import your repo in Netlify, set the build command to `npm run build` and publish directory to `dist`.
-- **Other hosts**: Upload the contents of the `dist/` folder to your static hosting provider.
-
-For more details, see the [Vite deployment guide](https://vitejs.dev/guide/static-deploy.html).
+- **Front end:** React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui components
+- **Map:** react‑leaflet & Leaflet/OpenStreetMap tiles
+- **Data:** Supabase (client / server), React Query for fetching/caching
+- **Forms:** react‑hook‑form + Zod validation
+- **Back end (optional):** Express, Supabase JS, Google Places proxy
+- **Utilities:** date‑fns, clsx, vaul, and others listed in `package.json`
+- **Testing:** Vitest with Testing Library
 
 ---
 
-## Can I connect a custom domain to my Lovable project?
+## Getting started
 
-Yes, you can!
+The repository is a monorepo‑style project with both client and server code.
+You can run everything locally with Node (v18+ recommended).
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### 1. Clone and install
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```bash
+git clone https://github.com/your‑username/estramap.git
+cd estramap
+npm install
+```
+
+### 2. Environment variables
+
+Copy `.env.example` to `.env` and fill in the values:
+
+```ini
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+PORT=3001          # optional, defaults to 3001
+```
+
+For a fully static deployment (no server side code), uncomment and set the
+`VITE_` variables instead of the plain ones.  This will expose the keys in the
+bundle and talk directly to Supabase / Google from the browser.
+
+### 3. Development
+
+Start the client and server together:
+
+```bash
+npm run dev        # runs both with concurrently (client=Vite, server=tsx)
+```
+
+You can also run each side independently:
+
+```bash
+npm run dev:client  # just the Vite dev server
+npm run dev:server  # just the Express API
+```
+
+The front end will be available at http://localhost:5173 and the API at
+http://localhost:3001 by default.  Client requests will automatically proxy to
+the server if it is running.
+
+### 4. Building & production
+
+```bash
+npm run build      # compiles TypeScript, builds Vite production bundle
+npm start          # run built server (sets NODE_ENV=production)
+```
+
+A static‑only build can be served from any static host (Netlify, Vercel, etc).
+Just deploy the contents of `dist/` and configure the `VITE_` environment
+variables for Supabase/Google keys.
+
+### 5. Testing
+
+```bash
+npm run test        # run all tests once
+npm run test:watch  # run in watch mode
+```
+
+Currently there is one trivial example test; feel free to add more as you
+develop.
+
+---
+
+## API reference
+
+The Express server exposes a simple JSON API when running in `NODE_ENV`
+production or during local development.  Client code will automatically fall
+back to calling Supabase directly if the proxy is unavailable.
+
+```
+GET    /api/reports             # list reports (latest first)
+POST   /api/reports             # create a new report ({ type, pharmacy_name, … })
+PATCH  /api/reports/:id/vote    # vote on a report (body: { type: "up"|"down" })
+GET    /api/places/autocomplete?input=...   # Google Places proxy
+GET    /api/places/details?place_id=...
+GET    /api/places/geocode?address=...
+```
+
+The Supabase table schema is defined under `supabase/migrations` and the
+client helper types live in `src/integrations/supabase/types.ts`.
+
+---
+
+## Deployment
+
+A few deployment options:
+
+1. **Full server** – host the Express app on Node (Heroku, Fly.io, DigitalOcean,
+   etc) and use a Supabase project for data.  Keep the `.env` keys server‑side.
+2. **Static only** – build and deploy to a static host, set `VITE_` vars, and
+   rely on direct Supabase/Google API access from the browser.
+3. **Hybrid** – run just the proxy on a small Node instance and point the
+   static front end at it; allows you to keep the Supabase credentials private.
+
+Supabase migrations in `supabase/migrations` can be applied with the
+`supabase` CLI if you're running your own project; see Supabase docs for
+details.
+
+---
+
+## Contributing
+
+Contributions are welcome!  Please open issues or pull requests on the
+GitHub repository.  The project uses ESLint + Prettier for formatting and
+adheres to a strict TypeScript configuration (`npm run lint`).
+
+---
+
+## License
+
+This code is released under the **MIT License**.  See `LICENSE` for details.
+
