@@ -11,9 +11,10 @@ interface LocalReportCardProps {
   report: PharmacyReport;
   isHighlighted: boolean;
   onHover: (id: string | null) => void;
+  onVote: (reportId: string, type: "up" | "down") => void;
 }
 
-const LocalReportCard = ({ report, isHighlighted, onHover }: LocalReportCardProps) => {
+const LocalReportCard = ({ report, isHighlighted, onHover, onVote }: LocalReportCardProps) => {
   const timeAgo = formatDistanceToNow(new Date(report.created_at), { addSuffix: true });
 
   return (
@@ -59,7 +60,7 @@ const LocalReportCard = ({ report, isHighlighted, onHover }: LocalReportCardProp
 
             {report.notes && (
               <p className="mt-2 text-sm text-muted-foreground italic">
-                "{report.notes}"
+                &ldquo;{report.notes}&rdquo;
               </p>
             )}
 
@@ -73,11 +74,27 @@ const LocalReportCard = ({ report, isHighlighted, onHover }: LocalReportCardProp
         <div className="mt-3 flex items-center justify-between border-t pt-3">
           <span className="text-xs text-muted-foreground">Still accurate?</span>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-in-stock hover:text-in-stock">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs text-in-stock hover:text-in-stock"
+              onClick={(e) => {
+                e.stopPropagation();
+                onVote(report.id, "up");
+              }}
+            >
               <ThumbsUp className="h-3.5 w-3.5" />
               Yes ({report.upvotes})
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-destructive hover:text-destructive">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onVote(report.id, "down");
+              }}
+            >
               <ThumbsDown className="h-3.5 w-3.5" />
               No ({report.downvotes})
             </Button>

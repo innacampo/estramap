@@ -19,6 +19,7 @@ import {
 import { Store, Globe, CheckCircle } from "lucide-react";
 import Autocomplete from "react-google-autocomplete";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface ReportModalProps {
   open: boolean;
@@ -29,18 +30,13 @@ interface ReportModalProps {
 type PharmacyType = "local" | "online";
 type StockStatus = "in-stock" | "low-stock";
 
-// CRITICAL FIX: Ensure Google's floating suggestion dropdown renders above the Dialog overlay
-// AND has pointer-events: auto so Shadcn's modal background lock doesn't swallow your clicks!
-const pacStyle =
-  typeof document !== "undefined" &&
-  !document.getElementById("pac-z-index-fix")
-    ? (() => {
-        const s = document.createElement("style");
-        s.id = "pac-z-index-fix";
-        s.textContent = ".pac-container { z-index: 9999 !important; pointer-events: auto !important; }";
-        document.head.appendChild(s);
-      })()
-    : null;
+// Ensure Google's floating suggestion dropdown renders above the Dialog overlay
+if (typeof document !== "undefined" && !document.getElementById("pac-z-index-fix")) {
+  const s = document.createElement("style");
+  s.id = "pac-z-index-fix";
+  s.textContent = ".pac-container { z-index: 9999 !important; pointer-events: auto !important; }";
+  document.head.appendChild(s);
+}
 
 const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps) => {
   const [pharmacyType, setPharmacyType] = useState<PharmacyType>("local");
@@ -100,6 +96,8 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
         setNotes("");
         onOpenChange(false);
       }, 2000);
+    } else {
+      toast.error("Failed to submit report. Please try again.");
     }
   };
 
@@ -188,7 +186,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
                 />
                 <Autocomplete
                   apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                  ref={autocompleteRef as any}
+                  ref={autocompleteRef as React.RefObject<HTMLInputElement>}
                   onPlaceSelected={(place) => {
                     const formatted = place.formatted_address || "";
                     setAddress(formatted);

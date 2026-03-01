@@ -14,7 +14,7 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange }: HeaderProps) => {
       <div className="container mx-auto flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-2">
           <MapPin className="h-7 w-7 text-primary" strokeWidth={2.5} />
-          <h1 className="text-2xl font-bold tracking-tight text-primary">EstraMap - [this is a work in progress]</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">EstraMap</h1>
         </div>
 
         <div className="flex flex-1 items-center gap-3 md:max-w-xl">
