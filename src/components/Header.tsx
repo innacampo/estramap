@@ -114,9 +114,8 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange, doseFilter, onDoseF
           <Select
             value={doseFilter}
             onValueChange={onDoseFilterChange}
-            className="w-full sm:w-[130px] shrink-0"
           >
-            <SelectTrigger aria-label="Filter by dose">
+            <SelectTrigger className="w-full sm:w-[130px] shrink-0" aria-label="Filter by dose">
               <SelectValue placeholder="All doses" />
             </SelectTrigger>
             <SelectContent>
