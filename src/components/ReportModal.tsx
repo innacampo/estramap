@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Store, Globe, CheckCircle } from "lucide-react";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
-import { createReport, type PlaceDetails } from "@/lib/api";
+import { createReport, geocodeAddress, type PlaceDetails } from "@/lib/api";
 import { toast } from "sonner";
 
 interface ReportModalProps {
@@ -61,6 +61,18 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
     setSubmitting(true);
 
     try {
+      // Geocode address if coordinates are missing
+      let reportLat = pharmacyType === "local" ? lat : null;
+      let reportLng = pharmacyType === "local" ? lng : null;
+
+      if (pharmacyType === "local" && address && (reportLat == null || reportLng == null)) {
+        const coords = await geocodeAddress(address);
+        if (coords) {
+          reportLat = coords.lat;
+          reportLng = coords.lng;
+        }
+      }
+
       await createReport({
         type: pharmacyType,
         pharmacy_name: pharmacyType === "local" ? pharmacyName : websiteName,
@@ -70,8 +82,8 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
         dose,
         status,
         notes: notes || null,
-        lat: pharmacyType === "local" ? lat : null,
-        lng: pharmacyType === "local" ? lng : null,
+        lat: reportLat,
+        lng: reportLng,
       });
 
       setSubmitted(true);

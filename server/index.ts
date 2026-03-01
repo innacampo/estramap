@@ -115,6 +115,28 @@ app.get("/api/places/details", async (req, res) => {
   }
 });
 
+app.get("/api/places/geocode", async (req, res) => {
+  const address = req.query.address as string | undefined;
+  if (!address?.trim()) return res.status(400).json({ error: "address required" });
+
+  try {
+    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+    url.searchParams.set("address", address);
+    url.searchParams.set("key", GOOGLE_MAPS_API_KEY);
+
+    const response = await fetch(url.toString());
+    const data = await response.json();
+    const loc = data.results?.[0]?.geometry?.location;
+    if (loc) {
+      res.json({ lat: loc.lat, lng: loc.lng });
+    } else {
+      res.json({ lat: null, lng: null });
+    }
+  } catch {
+    res.status(500).json({ error: "Geocoding failed" });
+  }
+});
+
 // ── Static files (production) ─────────────────────────────────
 
 if (process.env.NODE_ENV === "production") {

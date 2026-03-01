@@ -120,14 +120,21 @@ export async function searchPlaces(
 ): Promise<PlacePrediction[]> {
   if (!input.trim()) return [];
 
-  // Try server proxy first (if available)
-  if (_serverAvailable) {
-    const res = await fetch(
-      `${API_BASE}/places/autocomplete?input=${encodeURIComponent(input)}`,
-    );
-    if (res.ok) {
-      const data = await res.json();
-      return (data.predictions as PlacePrediction[]) ?? [];
+  // Try server proxy first (if not already known to be unavailable)
+  if (_serverAvailable !== false) {
+    try {
+      const res = await fetch(
+        `${API_BASE}/places/autocomplete?input=${encodeURIComponent(input)}`,
+      );
+      const ct = res.headers.get("content-type") ?? "";
+      if (ct.includes("json") && res.ok) {
+        _serverAvailable = true;
+        const data = await res.json();
+        return (data.predictions as PlacePrediction[]) ?? [];
+      }
+      if (!ct.includes("json")) _serverAvailable = false;
+    } catch {
+      _serverAvailable = false;
     }
   }
 
@@ -138,24 +145,105 @@ export async function searchPlaces(
 export async function getPlaceDetails(
   placeId: string,
 ): Promise<PlaceDetails | null> {
-  if (_serverAvailable) {
-    const res = await fetch(
-      `${API_BASE}/places/details?place_id=${encodeURIComponent(placeId)}`,
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const result = data.result;
-      if (result?.geometry?.location) {
-        return {
-          formatted_address: result.formatted_address,
-          lat: result.geometry.location.lat,
-          lng: result.geometry.location.lng,
-        };
+  if (_serverAvailable !== false) {
+    try {
+      const res = await fetch(
+        `${API_BASE}/places/details?place_id=${encodeURIComponent(placeId)}`,
+      );
+      const ct = res.headers.get("content-type") ?? "";
+      if (ct.includes("json") && res.ok) {
+        _serverAvailable = true;
+        const data = await res.json();
+        const result = data.result;
+        if (result?.geometry?.location) {
+          return {
+            formatted_address: result.formatted_address,
+            lat: result.geometry.location.lat,
+            lng: result.geometry.location.lng,
+          };
+        }
       }
+      if (!ct.includes("json")) _serverAvailable = false;
+    } catch {
+      _serverAvailable = false;
     }
   }
 
   return googlePlaceDetails(placeId);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Geocoding (address → lat/lng)
+// ═══════════════════════════════════════════════════════════════
+
+/** Geocode an address string to { lat, lng }.
+ *  Tries: 1) server proxy, 2) Google client-side Geocoder, 3) Nominatim (OSM). */
+export async function geocodeAddress(
+  address: string,
+): Promise<{ lat: number; lng: number } | null> {
+  if (!address.trim()) return null;
+
+  // 1) Server proxy (Google Geocoding)
+  if (_serverAvailable) {
+    try {
+      const res = await fetch(
+        `${API_BASE}/places/geocode?address=${encodeURIComponent(address)}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.lat != null && data.lng != null) {
+          return { lat: data.lat, lng: data.lng };
+        }
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  // 2) Google Maps JS Geocoder (if loaded)
+  if (typeof google !== "undefined" && google.maps?.Geocoder) {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const result = await new Promise<{ lat: number; lng: number } | null>(
+        (resolve) => {
+          geocoder.geocode({ address }, (results, status) => {
+            if (
+              status === google.maps.GeocoderStatus.OK &&
+              results?.[0]?.geometry?.location
+            ) {
+              resolve({
+                lat: results[0].geometry.location.lat(),
+                lng: results[0].geometry.location.lng(),
+              });
+            } else {
+              resolve(null);
+            }
+          });
+        },
+      );
+      if (result) return result;
+    } catch {
+      // fall through
+    }
+  }
+
+  // 3) Nominatim (OpenStreetMap) — no API key needed
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
+      { headers: { "User-Agent": "EstraMap/1.0" } },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    }
+  } catch {
+    // give up
+  }
+
+  return null;
 }
 
 // ── Google Maps JS helpers (direct / lovable mode) ─────────────
