@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ThumbsUp, ThumbsDown, MapPin, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,18 @@ interface LocalReportCardProps {
 }
 
 const LocalReportCard = ({ report, isHighlighted, onHover, onVote }: LocalReportCardProps) => {
+  const [hasVoted, setHasVoted] = useState(false);
+  const [optimisticUpvotes, setOptimisticUpvotes] = useState(report.upvotes);
+  const [optimisticDownvotes, setOptimisticDownvotes] = useState(report.downvotes);
   const timeAgo = formatDistanceToNow(new Date(report.created_at), { addSuffix: true });
+
+  const handleVote = (type: "up" | "down") => {
+    if (hasVoted) return;
+    setHasVoted(true);
+    if (type === "up") setOptimisticUpvotes((v) => v + 1);
+    else setOptimisticDownvotes((v) => v + 1);
+    onVote(report.id, type);
+  };
 
   return (
     <Card
@@ -77,26 +89,28 @@ const LocalReportCard = ({ report, isHighlighted, onHover, onVote }: LocalReport
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1 text-xs text-in-stock hover:text-in-stock"
+              disabled={hasVoted}
+              className="h-7 gap-1 text-xs text-in-stock hover:text-in-stock disabled:opacity-50"
               onClick={(e) => {
                 e.stopPropagation();
-                onVote(report.id, "up");
+                handleVote("up");
               }}
             >
               <ThumbsUp className="h-3.5 w-3.5" />
-              Yes ({report.upvotes})
+              Yes ({optimisticUpvotes})
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+              disabled={hasVoted}
+              className="h-7 gap-1 text-xs text-destructive hover:text-destructive disabled:opacity-50"
               onClick={(e) => {
                 e.stopPropagation();
-                onVote(report.id, "down");
+                handleVote("down");
               }}
             >
               <ThumbsDown className="h-3.5 w-3.5" />
-              No ({report.downvotes})
+              No ({optimisticDownvotes})
             </Button>
           </div>
         </div>
