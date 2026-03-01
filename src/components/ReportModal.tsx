@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Store, Globe, CheckCircle } from "lucide-react";
-import Autocomplete from "react-google-autocomplete";
-import { supabase } from "@/integrations/supabase/client";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { createReport, type PlaceDetails } from "@/lib/api";
 import { toast } from "sonner";
 
 interface ReportModalProps {
@@ -29,14 +29,6 @@ interface ReportModalProps {
 
 type PharmacyType = "local" | "online";
 type StockStatus = "in-stock" | "low-stock";
-
-// Ensure Google's floating suggestion dropdown renders above the Dialog overlay
-if (typeof document !== "undefined" && !document.getElementById("pac-z-index-fix")) {
-  const s = document.createElement("style");
-  s.id = "pac-z-index-fix";
-  s.textContent = ".pac-container { z-index: 9999 !important; pointer-events: auto !important; }";
-  document.head.appendChild(s);
-}
 
 const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps) => {
   const [pharmacyType, setPharmacyType] = useState<PharmacyType>("local");
@@ -52,52 +44,47 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Use a ref to target the Autocomplete input directly for clearing
-  const autocompleteRef = useRef<HTMLInputElement>(null);
+  const resetForm = () => {
+    setPharmacyName("");
+    setAddress("");
+    setLat(null);
+    setLng(null);
+    setWebsiteName("");
+    setWebsiteUrl("");
+    setDose("");
+    setStatus("");
+    setNotes("");
+  };
 
   const handleSubmit = async () => {
     if (!status) return;
     setSubmitting(true);
 
-    const { error } = await supabase.from("pharmacy_reports").insert({
-      type: pharmacyType,
-      pharmacy_name: pharmacyType === "local" ? pharmacyName : websiteName,
-      address: pharmacyType === "local" ? address : null,
-      website_url: pharmacyType === "online" ? websiteUrl : null,
-      medication: "Estradiol Patch",
-      dose,
-      status,
-      notes: notes || null,
-      lat: pharmacyType === "local" ? lat : null,
-      lng: pharmacyType === "local" ? lng : null,
-    });
+    try {
+      await createReport({
+        type: pharmacyType,
+        pharmacy_name: pharmacyType === "local" ? pharmacyName : websiteName,
+        address: pharmacyType === "local" ? address : null,
+        website_url: pharmacyType === "online" ? websiteUrl : null,
+        medication: "Estradiol Patch",
+        dose,
+        status,
+        notes: notes || null,
+        lat: pharmacyType === "local" ? lat : null,
+        lng: pharmacyType === "local" ? lng : null,
+      });
 
-    setSubmitting(false);
-
-    if (!error) {
       setSubmitted(true);
       onReportSubmitted?.();
       setTimeout(() => {
         setSubmitted(false);
-        setPharmacyName("");
-        setAddress("");
-        setLat(null);
-        setLng(null);
-        
-        // Manually clear the Google input text
-        if (autocompleteRef.current) {
-           autocompleteRef.current.value = "";
-        }
-        
-        setWebsiteName("");
-        setWebsiteUrl("");
-        setDose("");
-        setStatus("");
-        setNotes("");
+        resetForm();
         onOpenChange(false);
       }, 2000);
-    } else {
+    } catch {
       toast.error("Failed to submit report. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -130,11 +117,6 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="w-[calc(100%-2rem)] sm:max-w-lg rounded-xl max-h-[90dvh] overflow-y-auto"
-        onInteractOutside={(e) => {
-          // Prevent the Dialog from closing when clicking a Google autocomplete suggestion
-          const target = e.target as HTMLElement;
-          if (target.closest(".pac-container")) e.preventDefault();
-        }}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
@@ -184,27 +166,20 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
                   value={pharmacyName}
                   onChange={(e) => setPharmacyName(e.target.value)}
                 />
-                <Autocomplete
-                  apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                  ref={autocompleteRef as React.RefObject<HTMLInputElement>}
-                  onPlaceSelected={(place) => {
-                    const formatted = place.formatted_address || "";
-                    setAddress(formatted);
-                    const location = place.geometry?.location;
-                    if (location) {
-                      setLat(location.lat());
-                      setLng(location.lng());
-                    }
-                  }}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    setAddress(e.target.value);
-                    // Clear the saved coords if they keep typing after picking an address
+                <AddressAutocomplete
+                  value={address}
+                  onChange={(val) => {
+                    setAddress(val);
+                    // Clear coords when user types manually
                     setLat(null);
                     setLng(null);
                   }}
-                  options={{ types: ["address"] }}
+                  onPlaceSelected={(details: PlaceDetails) => {
+                    setAddress(details.formatted_address);
+                    setLat(details.lat);
+                    setLng(details.lng);
+                  }}
                   placeholder="Address or zip code"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:text-sm"
                 />
               </div>
             ) : (

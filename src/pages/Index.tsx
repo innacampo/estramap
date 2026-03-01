@@ -8,10 +8,7 @@ import PharmacyMap from "@/components/PharmacyMap";
 import ReportModal from "@/components/ReportModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
-
-type PharmacyReport = Tables<"pharmacy_reports">;
+import { fetchReports, voteOnReport } from "@/lib/api";
 
 const Index = () => {
   const [reportOpen, setReportOpen] = useState(false);
@@ -27,32 +24,19 @@ const Index = () => {
     error,
   } = useQuery({
     queryKey: ["pharmacy_reports"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pharmacy_reports")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as PharmacyReport[];
-    },
+    queryFn: fetchReports,
   });
 
   const handleVote = useCallback(
     async (reportId: string, type: "up" | "down") => {
-      const report = reports.find((r) => r.id === reportId);
-      if (!report) return;
-
-      const field = type === "up" ? "upvotes" : "downvotes";
-      const { error } = await supabase
-        .from("pharmacy_reports")
-        .update({ [field]: (report[field] ?? 0) + 1 })
-        .eq("id", reportId);
-
-      if (!error) {
+      try {
+        await voteOnReport(reportId, type);
         refetch();
+      } catch {
+        // silently fail — user can retry
       }
     },
-    [reports, refetch],
+    [refetch],
   );
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
