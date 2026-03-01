@@ -55,49 +55,35 @@ export async function fetchReports(): Promise<PharmacyReport[]> {
 export async function createReport(
   report: Record<string, unknown>,
 ): Promise<PharmacyReport> {
-  if (_serverAvailable) {
-    const json = await tryServerJson<PharmacyReport>(`${API_BASE}/reports`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(report),
-    });
-    if (json !== null) return json;
+  // Writes must go through the Express server (rate-limited + validated).
+  // No direct Supabase fallback — that would bypass all protections.
+  const json = await tryServerJson<PharmacyReport>(`${API_BASE}/reports`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(report),
+  });
+  if (json !== null) {
+    _serverAvailable = true;
+    return json;
   }
-
-  const { data, error } = await supabase
-    .from("pharmacy_reports")
-    .insert(report as Tables<"pharmacy_reports">)
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-  return data as PharmacyReport;
+  throw new Error("Unable to reach the server. Please try again later.");
 }
 
 export async function voteOnReport(
   id: string,
   type: "up" | "down",
 ): Promise<void> {
-  if (_serverAvailable) {
-    const json = await tryServerJson(`${API_BASE}/reports/${id}/vote`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type }),
-    });
-    if (json !== null) return;
+  // Writes must go through the Express server (rate-limited).
+  const json = await tryServerJson(`${API_BASE}/reports/${id}/vote`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type }),
+  });
+  if (json !== null) {
+    _serverAvailable = true;
+    return;
   }
-
-  const field = type === "up" ? "upvotes" : "downvotes";
-  const { data: report, error: fetchErr } = await supabase
-    .from("pharmacy_reports")
-    .select("upvotes, downvotes")
-    .eq("id", id)
-    .single();
-  if (fetchErr || !report) throw new Error("Report not found");
-  const { error } = await supabase
-    .from("pharmacy_reports")
-    .update({ [field]: ((report as Record<string, number>)[field] ?? 0) + 1 })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
+  throw new Error("Unable to reach the server. Please try again later.");
 }
 
 // ═══════════════════════════════════════════════════════════════

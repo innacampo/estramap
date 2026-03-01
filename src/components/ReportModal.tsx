@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,8 @@ interface ReportModalProps {
 type PharmacyType = "local" | "online";
 type StockStatus = "in-stock" | "low-stock" | "out-of-stock";
 
+const SUBMIT_COOLDOWN_MS = 30_000; // 30 seconds between submissions
+
 const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps) => {
   const [pharmacyType, setPharmacyType] = useState<PharmacyType>("local");
   const [pharmacyName, setPharmacyName] = useState("");
@@ -43,6 +45,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const lastSubmitRef = useRef<number>(0);
 
   const resetForm = () => {
     setPharmacyName("");
@@ -58,6 +61,16 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
 
   const handleSubmit = async () => {
     if (!status) return;
+
+    // Client-side cooldown: prevent rapid re-submissions
+    const now = Date.now();
+    const elapsed = now - lastSubmitRef.current;
+    if (elapsed < SUBMIT_COOLDOWN_MS) {
+      const remaining = Math.ceil((SUBMIT_COOLDOWN_MS - elapsed) / 1000);
+      toast.error(`Please wait ${remaining}s before submitting another report.`);
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -87,6 +100,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
       });
 
       setSubmitted(true);
+      lastSubmitRef.current = Date.now();
       onReportSubmitted?.();
       setTimeout(() => {
         setSubmitted(false);
