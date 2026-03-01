@@ -44,7 +44,7 @@ const LocalReportCard = ({ report, isHighlighted, onHover, onVote, distance }: L
       onMouseEnter={() => onHover(report.id)}
       onMouseLeave={() => onHover(null)}
       role="article"
-      aria-label={`${report.pharmacy_name} - ${report.medication} ${report.dose} - ${report.status === "in-stock" ? "In Stock" : "Low Stock"}`}
+      aria-label={`${report.pharmacy_name} - ${report.medication} ${report.dose} - ${report.status === "in-stock" ? "In Stock" : report.status === "out-of-stock" ? "Out of Stock" : "Low Stock"}`}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
@@ -57,10 +57,16 @@ const LocalReportCard = ({ report, isHighlighted, onHover, onVote, distance }: L
                 className={
                   report.status === "in-stock"
                     ? "bg-in-stock text-white border-transparent"
-                    : "bg-low-stock text-white border-transparent"
+                    : report.status === "out-of-stock"
+                      ? "bg-out-of-stock text-white border-transparent"
+                      : "bg-low-stock text-white border-transparent"
                 }
               >
-                {report.status === "in-stock" ? "In Stock" : "Low Stock"}
+                {report.status === "in-stock"
+                  ? "In Stock"
+                  : report.status === "out-of-stock"
+                    ? "Out of Stock"
+                    : "Low Stock"}
               </Badge>
             </div>
 

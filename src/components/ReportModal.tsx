@@ -28,7 +28,7 @@ interface ReportModalProps {
 }
 
 type PharmacyType = "local" | "online";
-type StockStatus = "in-stock" | "low-stock";
+type StockStatus = "in-stock" | "low-stock" | "out-of-stock";
 
 const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps) => {
   const [pharmacyType, setPharmacyType] = useState<PharmacyType>("local");
@@ -257,6 +257,14 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
                 onClick={() => setStatus("low-stock")}
               >
                 ⚠️ Low Stock / Few Left
+              </Button>
+              <Button
+                type="button"
+                variant={status === "out-of-stock" ? "default" : "outline"}
+                className={`flex-1 text-sm ${status === "out-of-stock" ? "bg-out-of-stock hover:bg-out-of-stock/90 text-white" : ""}`}
+                onClick={() => setStatus("out-of-stock")}
+              >
+                ❌ Out of Stock
               </Button>
             </div>
           </div>

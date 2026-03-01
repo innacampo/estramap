@@ -1,4 +1,4 @@
-export type StockStatus = "in-stock" | "low-stock";
+export type StockStatus = "in-stock" | "low-stock" | "out-of-stock";
 
 export interface LocalReport {
   id: string;

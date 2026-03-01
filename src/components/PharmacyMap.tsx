@@ -46,6 +46,7 @@ const createHighlightedIcon = (color: string) =>
 
 const IN_STOCK_COLOR = "hsl(152, 60%, 40%)";
 const LOW_STOCK_COLOR = "hsl(38, 92%, 50%)";
+const OUT_OF_STOCK_COLOR = "hsl(0, 72%, 51%)";
 
 function MarkerItem({
   report,
@@ -57,7 +58,12 @@ function MarkerItem({
   onHover: (id: string | null) => void;
 }) {
   const markerRef = useRef<L.Marker>(null);
-  const color = report.status === "in-stock" ? IN_STOCK_COLOR : LOW_STOCK_COLOR;
+  const color =
+    report.status === "in-stock"
+      ? IN_STOCK_COLOR
+      : report.status === "out-of-stock"
+        ? OUT_OF_STOCK_COLOR
+        : LOW_STOCK_COLOR;
   const icon = isHighlighted ? createHighlightedIcon(color) : createIcon(color);
 
   useEffect(() => {
@@ -82,7 +88,13 @@ function MarkerItem({
         <div className="text-sm">
           <p className="font-semibold">{report.pharmacy_name}</p>
           <p>{report.medication} {report.dose}</p>
-          <p className="text-xs mt-1">{report.status === "in-stock" ? "✅ In Stock" : "⚠️ Low Stock"}</p>
+          <p className="text-xs mt-1">
+            {report.status === "in-stock"
+              ? "✅ In Stock"
+              : report.status === "out-of-stock"
+                ? "❌ Out of Stock"
+                : "⚠️ Low Stock"}
+          </p>
         </div>
       </Popup>
     </Marker>
