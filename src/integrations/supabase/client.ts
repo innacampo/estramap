@@ -1,19 +1,18 @@
-// Direct Supabase client — used only when VITE_SUPABASE_URL is set (e.g. on lovable.ai).
-// When running with the Express server, the client uses /api/* instead and this is null.
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+// Supabase client — always available.
+// The anon key is public by design (RLS protects the data).
+// On lovable.ai these may be injected via env vars; otherwise we use the project defaults.
+import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-// Accept both names — lovable uses ANON_KEY, our docs say PUBLISHABLE_KEY
+const SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ||
+  "https://hcyxqttjhxzyutxiymtb.supabase.co";
+
 const SUPABASE_KEY =
-  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ??
-  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined);
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjeXhxdHRqaHh6eXV0eGl5bXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNzg3NTcsImV4cCI6MjA4Nzg1NDc1N30.X-7VUI1xogKXaDmKGYOSAoeNIuPdXnPqfrKQb5aTb6c";
 
-export const isDirectMode = Boolean(SUPABASE_URL && SUPABASE_KEY);
-
-export const supabase: SupabaseClient<Database> | null =
-  SUPABASE_URL && SUPABASE_KEY
-    ? createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true },
-      })
-    : null;
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true },
+});

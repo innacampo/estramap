@@ -1,85 +1,103 @@
 import type { Tables } from "@/integrations/supabase/types";
-import { supabase, isDirectMode } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 type PharmacyReport = Tables<"pharmacy_reports">;
 
 const API_BASE = "/api";
+
+// ── Server-proxy auto-detection ───────────────────────────────
+// null = not checked yet, true = server available, false = use Supabase directly
+let _serverAvailable: boolean | null = null;
+
+/** Try a server-proxy fetch. Returns the JSON on success,
+ *  or `null` if the server isn't there (HTML / network error). */
+async function tryServerJson<T>(input: RequestInfo, init?: RequestInit): Promise<T | null> {
+  try {
+    const res = await fetch(input, init);
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("json")) return null;          // got HTML → no server
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(body.error ?? `Server error ${res.status}`);
+    }
+    return (await res.json()) as T;
+  } catch (err) {
+    // Network-level failure (server not running)
+    if (err instanceof TypeError) return null;
+    throw err;                                       // re-throw app errors
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  Reports
 // ═══════════════════════════════════════════════════════════════
 
 export async function fetchReports(): Promise<PharmacyReport[]> {
-  if (isDirectMode && supabase) {
-    const { data, error } = await supabase
-      .from("pharmacy_reports")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return data as PharmacyReport[];
+  // If we already know the server isn't there, go direct
+  if (_serverAvailable !== false) {
+    const json = await tryServerJson<PharmacyReport[]>(`${API_BASE}/reports`);
+    if (json !== null) {
+      _serverAvailable = true;
+      return json;
+    }
+    _serverAvailable = false;                        // remember for future calls
   }
 
-  const res = await fetch(`${API_BASE}/reports`);
-  if (!res.ok) throw new Error("Failed to fetch reports");
-  const text = await res.text();
-  try {
-    return JSON.parse(text) as PharmacyReport[];
-  } catch {
-    throw new Error("Server returned non-JSON response — is the API server running?");
-  }
+  // Direct Supabase fallback
+  const { data, error } = await supabase
+    .from("pharmacy_reports")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data as PharmacyReport[];
 }
 
 export async function createReport(
   report: Record<string, unknown>,
 ): Promise<PharmacyReport> {
-  if (isDirectMode && supabase) {
-    const { data, error } = await supabase
-      .from("pharmacy_reports")
-      .insert(report as Tables<"pharmacy_reports">)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return data as PharmacyReport;
+  if (_serverAvailable) {
+    const json = await tryServerJson<PharmacyReport>(`${API_BASE}/reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(report),
+    });
+    if (json !== null) return json;
   }
 
-  const res = await fetch(`${API_BASE}/reports`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(report),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? "Failed to create report");
-  }
-  return res.json();
+  const { data, error } = await supabase
+    .from("pharmacy_reports")
+    .insert(report as Tables<"pharmacy_reports">)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data as PharmacyReport;
 }
 
 export async function voteOnReport(
   id: string,
   type: "up" | "down",
 ): Promise<void> {
-  if (isDirectMode && supabase) {
-    const field = type === "up" ? "upvotes" : "downvotes";
-    const { data: report, error: fetchErr } = await supabase
-      .from("pharmacy_reports")
-      .select("upvotes, downvotes")
-      .eq("id", id)
-      .single();
-    if (fetchErr || !report) throw new Error("Report not found");
-    const { error } = await supabase
-      .from("pharmacy_reports")
-      .update({ [field]: ((report as Record<string, number>)[field] ?? 0) + 1 })
-      .eq("id", id);
-    if (error) throw new Error(error.message);
-    return;
+  if (_serverAvailable) {
+    const json = await tryServerJson(`${API_BASE}/reports/${id}/vote`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type }),
+    });
+    if (json !== null) return;
   }
 
-  const res = await fetch(`${API_BASE}/reports/${id}/vote`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type }),
-  });
-  if (!res.ok) throw new Error("Failed to vote");
+  const field = type === "up" ? "upvotes" : "downvotes";
+  const { data: report, error: fetchErr } = await supabase
+    .from("pharmacy_reports")
+    .select("upvotes, downvotes")
+    .eq("id", id)
+    .single();
+  if (fetchErr || !report) throw new Error("Report not found");
+  const { error } = await supabase
+    .from("pharmacy_reports")
+    .update({ [field]: ((report as Record<string, number>)[field] ?? 0) + 1 })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -102,38 +120,42 @@ export async function searchPlaces(
 ): Promise<PlacePrediction[]> {
   if (!input.trim()) return [];
 
-  // In direct mode, use Google Maps JS API if loaded, otherwise return empty
-  if (isDirectMode) {
-    return googleAutocomplete(input);
+  // Try server proxy first (if available)
+  if (_serverAvailable) {
+    const res = await fetch(
+      `${API_BASE}/places/autocomplete?input=${encodeURIComponent(input)}`,
+    );
+    if (res.ok) {
+      const data = await res.json();
+      return (data.predictions as PlacePrediction[]) ?? [];
+    }
   }
 
-  const res = await fetch(
-    `${API_BASE}/places/autocomplete?input=${encodeURIComponent(input)}`,
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data.predictions as PlacePrediction[]) ?? [];
+  // Fall back to Google Maps JS API (loaded via script tag in main.tsx)
+  return googleAutocomplete(input);
 }
 
 export async function getPlaceDetails(
   placeId: string,
 ): Promise<PlaceDetails | null> {
-  if (isDirectMode) {
-    return googlePlaceDetails(placeId);
+  if (_serverAvailable) {
+    const res = await fetch(
+      `${API_BASE}/places/details?place_id=${encodeURIComponent(placeId)}`,
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const result = data.result;
+      if (result?.geometry?.location) {
+        return {
+          formatted_address: result.formatted_address,
+          lat: result.geometry.location.lat,
+          lng: result.geometry.location.lng,
+        };
+      }
+    }
   }
 
-  const res = await fetch(
-    `${API_BASE}/places/details?place_id=${encodeURIComponent(placeId)}`,
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  const result = data.result;
-  if (!result?.geometry?.location) return null;
-  return {
-    formatted_address: result.formatted_address,
-    lat: result.geometry.location.lat,
-    lng: result.geometry.location.lng,
-  };
+  return googlePlaceDetails(placeId);
 }
 
 // ── Google Maps JS helpers (direct / lovable mode) ─────────────
