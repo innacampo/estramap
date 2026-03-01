@@ -118,7 +118,7 @@ interface PharmacyMapProps {
 }
 
 const PharmacyMap = ({ reports, highlightedId, onHover, userLocation }: PharmacyMapProps) => {
-  const defaultCenter: [number, number] = [33.7900, -84.3880];
+  const defaultCenter: [number, number] = [33.8743, -84.3133];
   const flyTo: [number, number] | null = userLocation
     ? [userLocation.lat, userLocation.lng]
     : null;
