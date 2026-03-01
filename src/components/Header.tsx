@@ -29,7 +29,7 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange, doseFilter, onDoseF
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Debounced Google Places search
+  // Debounced address search
   useEffect(() => {
     if (!searchQuery.trim()) {
       setPredictions([]);

@@ -101,7 +101,7 @@ export async function voteOnReport(
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Google Places
+//  Places (Nominatim / OpenStreetMap)
 // ═══════════════════════════════════════════════════════════════
 
 export interface PlacePrediction {
@@ -120,123 +120,48 @@ export async function searchPlaces(
 ): Promise<PlacePrediction[]> {
   if (!input.trim()) return [];
 
-  // Try server proxy first (if not already known to be unavailable)
-  if (_serverAvailable !== false) {
-    try {
-      const res = await fetch(
-        `${API_BASE}/places/autocomplete?input=${encodeURIComponent(input)}`,
-      );
-      const ct = res.headers.get("content-type") ?? "";
-      if (ct.includes("json") && res.ok) {
-        _serverAvailable = true;
-        const data = await res.json();
-        return (data.predictions as PlacePrediction[]) ?? [];
-      }
-      if (!ct.includes("json")) _serverAvailable = false;
-    } catch {
-      _serverAvailable = false;
-    }
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(input)}`,
+      { headers: { "User-Agent": "EstraMap/1.0" } },
+    );
+    if (!res.ok) return [];
+    const data: Array<{ display_name: string; lat: string; lon: string }> =
+      await res.json();
+    return data.map((item) => ({
+      description: item.display_name,
+      place_id: `nominatim:${item.lat}:${item.lon}:${item.display_name}`,
+    }));
+  } catch {
+    return [];
   }
-
-  // Fall back to Google Maps JS API (loaded via script tag in main.tsx)
-  const googleResults = await googleAutocomplete(input);
-  if (googleResults.length > 0) return googleResults;
-
-  // Final fallback: Nominatim (OpenStreetMap) — no API key needed
-  return nominatimAutocomplete(input);
 }
 
 export async function getPlaceDetails(
   placeId: string,
 ): Promise<PlaceDetails | null> {
-  if (_serverAvailable !== false) {
-    try {
-      const res = await fetch(
-        `${API_BASE}/places/details?place_id=${encodeURIComponent(placeId)}`,
-      );
-      const ct = res.headers.get("content-type") ?? "";
-      if (ct.includes("json") && res.ok) {
-        _serverAvailable = true;
-        const data = await res.json();
-        const result = data.result;
-        if (result?.geometry?.location) {
-          return {
-            formatted_address: result.formatted_address,
-            lat: result.geometry.location.lat,
-            lng: result.geometry.location.lng,
-          };
-        }
-      }
-      if (!ct.includes("json")) _serverAvailable = false;
-    } catch {
-      _serverAvailable = false;
-    }
-  }
-
-  // If this is a Nominatim result, coords are encoded in the ID
   if (placeId.startsWith("nominatim:")) {
-    return parseNominatimPlaceId(placeId);
+    const parts = placeId.split(":");
+    if (parts.length < 4) return null;
+    const lat = parseFloat(parts[1]);
+    const lng = parseFloat(parts[2]);
+    const formatted_address = parts.slice(3).join(":");
+    if (isNaN(lat) || isNaN(lng)) return null;
+    return { formatted_address, lat, lng };
   }
-
-  return googlePlaceDetails(placeId);
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  Geocoding (address → lat/lng)
 // ═══════════════════════════════════════════════════════════════
 
-/** Geocode an address string to { lat, lng }.
- *  Tries: 1) server proxy, 2) Google client-side Geocoder, 3) Nominatim (OSM). */
+/** Geocode an address string to { lat, lng } via Nominatim. */
 export async function geocodeAddress(
   address: string,
 ): Promise<{ lat: number; lng: number } | null> {
   if (!address.trim()) return null;
 
-  // 1) Server proxy (Google Geocoding)
-  if (_serverAvailable) {
-    try {
-      const res = await fetch(
-        `${API_BASE}/places/geocode?address=${encodeURIComponent(address)}`,
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (data.lat != null && data.lng != null) {
-          return { lat: data.lat, lng: data.lng };
-        }
-      }
-    } catch {
-      // fall through
-    }
-  }
-
-  // 2) Google Maps JS Geocoder (if loaded)
-  if (typeof google !== "undefined" && google.maps?.Geocoder) {
-    try {
-      const geocoder = new google.maps.Geocoder();
-      const result = await new Promise<{ lat: number; lng: number } | null>(
-        (resolve) => {
-          geocoder.geocode({ address }, (results, status) => {
-            if (
-              status === google.maps.GeocoderStatus.OK &&
-              results?.[0]?.geometry?.location
-            ) {
-              resolve({
-                lat: results[0].geometry.location.lat(),
-                lng: results[0].geometry.location.lng(),
-              });
-            } else {
-              resolve(null);
-            }
-          });
-        },
-      );
-      if (result) return result;
-    } catch {
-      // fall through
-    }
-  }
-
-  // 3) Nominatim (OpenStreetMap) — no API key needed
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
@@ -253,98 +178,4 @@ export async function geocodeAddress(
   }
 
   return null;
-}
-
-// ── Nominatim (OpenStreetMap) helpers ──────────────────────────
-
-function nominatimAutocomplete(input: string): Promise<PlacePrediction[]> {
-  return fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(input)}`,
-    { headers: { "User-Agent": "EstraMap/1.0" } },
-  )
-    .then((res) => (res.ok ? res.json() : []))
-    .then((data: Array<{ display_name: string; lat: string; lon: string; osm_id: number }>) =>
-      data.map((item) => ({
-        description: item.display_name,
-        // Encode lat/lng/address into the ID so getPlaceDetails can resolve it
-        place_id: `nominatim:${item.lat}:${item.lon}:${item.display_name}`,
-      })),
-    )
-    .catch(() => []);
-}
-
-function parseNominatimPlaceId(placeId: string): PlaceDetails | null {
-  // Format: "nominatim:<lat>:<lng>:<display_name>"
-  const parts = placeId.split(":");
-  if (parts.length < 4) return null;
-  const lat = parseFloat(parts[1]);
-  const lng = parseFloat(parts[2]);
-  const formatted_address = parts.slice(3).join(":"); // rejoin in case address contains ':'
-  if (isNaN(lat) || isNaN(lng)) return null;
-  return { formatted_address, lat, lng };
-}
-
-// ── Google Maps JS helpers (direct / lovable mode) ─────────────
-
-let autocompleteService: google.maps.places.AutocompleteService | null = null;
-let placesService: google.maps.places.PlacesService | null = null;
-
-function getAutocompleteService(): google.maps.places.AutocompleteService | null {
-  if (autocompleteService) return autocompleteService;
-  if (typeof google === "undefined" || !google.maps?.places) return null;
-  autocompleteService = new google.maps.places.AutocompleteService();
-  return autocompleteService;
-}
-
-function getPlacesService(): google.maps.places.PlacesService | null {
-  if (placesService) return placesService;
-  if (typeof google === "undefined" || !google.maps?.places) return null;
-  const div = document.createElement("div");
-  placesService = new google.maps.places.PlacesService(div);
-  return placesService;
-}
-
-function googleAutocomplete(input: string): Promise<PlacePrediction[]> {
-  const svc = getAutocompleteService();
-  if (!svc) return Promise.resolve([]);
-
-  return new Promise((resolve) => {
-    svc.getPlacePredictions(
-      { input, types: ["address"] },
-      (predictions, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
-          resolve([]);
-          return;
-        }
-        resolve(
-          predictions.map((p) => ({
-            description: p.description,
-            place_id: p.place_id,
-          })),
-        );
-      },
-    );
-  });
-}
-
-function googlePlaceDetails(placeId: string): Promise<PlaceDetails | null> {
-  const svc = getPlacesService();
-  if (!svc) return Promise.resolve(null);
-
-  return new Promise((resolve) => {
-    svc.getDetails(
-      { placeId, fields: ["formatted_address", "geometry"] },
-      (place, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !place?.geometry?.location) {
-          resolve(null);
-          return;
-        }
-        resolve({
-          formatted_address: place.formatted_address ?? "",
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-        });
-      },
-    );
-  });
 }
