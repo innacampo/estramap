@@ -1,8 +1,8 @@
-import { ExternalLink, Calendar, Pill } from "lucide-react";
+import { ExternalLink, Clock, Pill, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Tables } from "@/integrations/supabase/types";
-import { format } from "date-fns";
+import { getFreshness, getTimeLabel } from "@/lib/freshness";
 
 type PharmacyReport = Tables<"pharmacy_reports">;
 
@@ -11,10 +11,12 @@ interface OnlineReportCardProps {
 }
 
 const OnlineReportCard = ({ report }: OnlineReportCardProps) => {
-  const dateFormatted = format(new Date(report.created_at), "MMM d, yyyy");
+  const freshness = getFreshness(report.created_at);
+  const timeLabel = getTimeLabel(report.created_at);
+  const isStale = freshness === "stale";
 
   return (
-    <Card className="transition-shadow hover:shadow-md" role="article" aria-label={`${report.pharmacy_name} - ${report.medication} ${report.dose}`}>
+    <Card className={`transition-shadow hover:shadow-md ${isStale ? "opacity-60" : ""}`} role="article" aria-label={`${report.pharmacy_name} - ${report.medication} ${report.dose}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -25,9 +27,9 @@ const OnlineReportCard = ({ report }: OnlineReportCardProps) => {
               <span>{report.medication} — {report.dose}</span>
             </div>
 
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Calendar className="h-3 w-3 shrink-0" />
-              <span>Found on {dateFormatted}</span>
+            <div className={`mt-1 flex items-center gap-1.5 text-xs ${isStale ? "text-destructive" : "text-muted-foreground"}`}>
+              {isStale ? <AlertTriangle className="h-3 w-3 shrink-0" /> : <Clock className="h-3 w-3 shrink-0" />}
+              <span>Reported {timeLabel}</span>
             </div>
           </div>
 

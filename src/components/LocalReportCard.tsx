@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ThumbsUp, ThumbsDown, MapPin, Clock } from "lucide-react";
+import { ThumbsUp, ThumbsDown, MapPin, Clock, AlertTriangle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Tables } from "@/integrations/supabase/types";
-import { formatDistanceToNow } from "date-fns";
+import { getFreshness, getTimeLabel } from "@/lib/freshness";
 
 type PharmacyReport = Tables<"pharmacy_reports">;
 
@@ -20,7 +20,9 @@ const LocalReportCard = ({ report, isHighlighted, onHover, onVote, distance }: L
   const [hasVoted, setHasVoted] = useState(false);
   const [optimisticUpvotes, setOptimisticUpvotes] = useState(report.upvotes);
   const [optimisticDownvotes, setOptimisticDownvotes] = useState(report.downvotes);
-  const timeAgo = formatDistanceToNow(new Date(report.created_at), { addSuffix: true });
+  const freshness = getFreshness(report.created_at);
+  const timeLabel = getTimeLabel(report.created_at);
+  const isStale = freshness === "stale";
 
   const handleVote = (type: "up" | "down") => {
     if (hasVoted) return;
@@ -33,6 +35,8 @@ const LocalReportCard = ({ report, isHighlighted, onHover, onVote, distance }: L
   return (
     <Card
       className={`transition-all duration-200 cursor-pointer ${
+        isStale ? "opacity-60" : ""
+      } ${
         isHighlighted
           ? "ring-2 ring-primary shadow-md scale-[1.01]"
           : "hover:shadow-md"
@@ -82,9 +86,9 @@ const LocalReportCard = ({ report, isHighlighted, onHover, onVote, distance }: L
               </p>
             )}
 
-            <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>Reported {timeAgo} by a community member</span>
+            <div className={`mt-2 flex items-center gap-1 text-xs ${isStale ? "text-destructive" : "text-muted-foreground"}`}>
+              {isStale ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+              <span>Reported {timeLabel}</span>
             </div>
           </div>
         </div>
