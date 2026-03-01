@@ -13,9 +13,10 @@ interface LocalReportCardProps {
   isHighlighted: boolean;
   onHover: (id: string | null) => void;
   onVote: (reportId: string, type: "up" | "down") => void;
+  distance?: number;
 }
 
-const LocalReportCard = ({ report, isHighlighted, onHover, onVote }: LocalReportCardProps) => {
+const LocalReportCard = ({ report, isHighlighted, onHover, onVote, distance }: LocalReportCardProps) => {
   const [hasVoted, setHasVoted] = useState(false);
   const [optimisticUpvotes, setOptimisticUpvotes] = useState(report.upvotes);
   const [optimisticDownvotes, setOptimisticDownvotes] = useState(report.downvotes);
@@ -63,6 +64,11 @@ const LocalReportCard = ({ report, isHighlighted, onHover, onVote }: LocalReport
               <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{report.address}</span>
+                {distance != null && distance !== Infinity && (
+                  <span className="ml-1 shrink-0 font-medium text-primary">
+                    · {distance < 0.1 ? "< 0.1" : distance.toFixed(1)} mi
+                  </span>
+                )}
               </div>
             )}
 

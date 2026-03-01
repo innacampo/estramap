@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { Map, Loader2, AlertCircle, Inbox } from "lucide-react";
+import { Map, Loader2, AlertCircle, Inbox, Navigation, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import LocalReportCard from "@/components/LocalReportCard";
@@ -9,12 +9,14 @@ import ReportModal from "@/components/ReportModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { fetchReports, voteOnReport } from "@/lib/api";
+import { useGeolocation, distanceMiles } from "@/hooks/use-geolocation";
 
 const Index = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
+  const { userLocation, isLocating, requestLocation, clearLocation } = useGeolocation();
 
   const {
     data: reports = [],
@@ -41,20 +43,32 @@ const Index = () => {
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
-  const localReports = useMemo(
-    () =>
-      reports
-        .filter((r) => r.type === "local")
-        .filter(
-          (r) =>
-            !normalizedQuery ||
-            r.pharmacy_name?.toLowerCase().includes(normalizedQuery) ||
-            r.address?.toLowerCase().includes(normalizedQuery) ||
-            r.medication?.toLowerCase().includes(normalizedQuery) ||
-            r.dose?.toLowerCase().includes(normalizedQuery),
-        ),
-    [reports, normalizedQuery],
-  );
+  const localReports = useMemo(() => {
+    const filtered = reports
+      .filter((r) => r.type === "local")
+      .filter(
+        (r) =>
+          !normalizedQuery ||
+          r.pharmacy_name?.toLowerCase().includes(normalizedQuery) ||
+          r.address?.toLowerCase().includes(normalizedQuery) ||
+          r.medication?.toLowerCase().includes(normalizedQuery) ||
+          r.dose?.toLowerCase().includes(normalizedQuery),
+      );
+
+    if (userLocation) {
+      return filtered
+        .map((r) => ({
+          ...r,
+          _distance:
+            r.lat != null && r.lng != null
+              ? distanceMiles(userLocation.lat, userLocation.lng, r.lat, r.lng)
+              : Infinity,
+        }))
+        .sort((a, b) => a._distance - b._distance);
+    }
+
+    return filtered;
+  }, [reports, normalizedQuery, userLocation]);
 
   const onlineReports = useMemo(
     () =>
@@ -121,6 +135,7 @@ const Index = () => {
               reports={localReports}
               highlightedId={highlightedId}
               onHover={setHighlightedId}
+              userLocation={userLocation}
             />
           </div>
         )}
@@ -140,6 +155,39 @@ const Index = () => {
                 </TabsList>
 
                 <TabsContent value="local">
+                  {/* Near me button */}
+                  <div className="mb-3 flex items-center gap-2">
+                    {userLocation ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={clearLocation}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Clear location
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={isLocating}
+                        onClick={requestLocation}
+                      >
+                        {isLocating ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Navigation className="h-3.5 w-3.5" />
+                        )}
+                        Near me
+                      </Button>
+                    )}
+                    {userLocation && (
+                      <span className="text-xs text-muted-foreground">Sorted by distance</span>
+                    )}
+                  </div>
+
                   {isLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -161,6 +209,7 @@ const Index = () => {
                           isHighlighted={highlightedId === report.id}
                           onHover={setHighlightedId}
                           onVote={handleVote}
+                          distance={"_distance" in report ? (report as any)._distance : undefined}
                         />
                       ))}
                     </div>
@@ -199,6 +248,7 @@ const Index = () => {
                 reports={localReports}
                 highlightedId={highlightedId}
                 onHover={setHighlightedId}
+                userLocation={userLocation}
               />
             </div>
           </div>
