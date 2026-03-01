@@ -139,7 +139,11 @@ export async function searchPlaces(
   }
 
   // Fall back to Google Maps JS API (loaded via script tag in main.tsx)
-  return googleAutocomplete(input);
+  const googleResults = await googleAutocomplete(input);
+  if (googleResults.length > 0) return googleResults;
+
+  // Final fallback: Nominatim (OpenStreetMap) — no API key needed
+  return nominatimAutocomplete(input);
 }
 
 export async function getPlaceDetails(
@@ -167,6 +171,11 @@ export async function getPlaceDetails(
     } catch {
       _serverAvailable = false;
     }
+  }
+
+  // If this is a Nominatim result, coords are encoded in the ID
+  if (placeId.startsWith("nominatim:")) {
+    return parseNominatimPlaceId(placeId);
   }
 
   return googlePlaceDetails(placeId);
@@ -244,6 +253,35 @@ export async function geocodeAddress(
   }
 
   return null;
+}
+
+// ── Nominatim (OpenStreetMap) helpers ──────────────────────────
+
+function nominatimAutocomplete(input: string): Promise<PlacePrediction[]> {
+  return fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(input)}`,
+    { headers: { "User-Agent": "EstraMap/1.0" } },
+  )
+    .then((res) => (res.ok ? res.json() : []))
+    .then((data: Array<{ display_name: string; lat: string; lon: string; osm_id: number }>) =>
+      data.map((item) => ({
+        description: item.display_name,
+        // Encode lat/lng/address into the ID so getPlaceDetails can resolve it
+        place_id: `nominatim:${item.lat}:${item.lon}:${item.display_name}`,
+      })),
+    )
+    .catch(() => []);
+}
+
+function parseNominatimPlaceId(placeId: string): PlaceDetails | null {
+  // Format: "nominatim:<lat>:<lng>:<display_name>"
+  const parts = placeId.split(":");
+  if (parts.length < 4) return null;
+  const lat = parseFloat(parts[1]);
+  const lng = parseFloat(parts[2]);
+  const formatted_address = parts.slice(3).join(":"); // rejoin in case address contains ':'
+  if (isNaN(lat) || isNaN(lng)) return null;
+  return { formatted_address, lat, lng };
 }
 
 // ── Google Maps JS helpers (direct / lovable mode) ─────────────
