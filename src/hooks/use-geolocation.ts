@@ -35,7 +35,12 @@ export function useGeolocation() {
     setError(null);
   }, []);
 
-  return { userLocation, isLocating, error, requestLocation, clearLocation };
+  const setManualLocation = useCallback((loc: UserLocation) => {
+    setUserLocation(loc);
+    setError(null);
+  }, []);
+
+  return { userLocation, isLocating, error, requestLocation, clearLocation, setManualLocation };
 }
 
 /** Haversine distance in miles */

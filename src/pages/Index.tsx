@@ -8,15 +8,17 @@ import PharmacyMap from "@/components/PharmacyMap";
 import ReportModal from "@/components/ReportModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { fetchReports, voteOnReport } from "@/lib/api";
+import { fetchReports, voteOnReport, type PlaceDetails } from "@/lib/api";
 import { useGeolocation, distanceMiles } from "@/hooks/use-geolocation";
 
 const Index = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLocationSearch, setIsLocationSearch] = useState(false);
+  const [doseFilter, setDoseFilter] = useState("all");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
-  const { userLocation, isLocating, requestLocation, clearLocation } = useGeolocation();
+  const { userLocation, isLocating, requestLocation, clearLocation, setManualLocation } = useGeolocation();
 
   const {
     data: reports = [],
@@ -41,7 +43,7 @@ const Index = () => {
     [refetch],
   );
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const normalizedQuery = isLocationSearch ? "" : searchQuery.trim().toLowerCase();
 
   const localReports = useMemo(() => {
     const filtered = reports
@@ -53,7 +55,8 @@ const Index = () => {
           r.address?.toLowerCase().includes(normalizedQuery) ||
           r.medication?.toLowerCase().includes(normalizedQuery) ||
           r.dose?.toLowerCase().includes(normalizedQuery),
-      );
+      )
+      .filter((r) => doseFilter === "all" || r.dose === doseFilter);
 
     if (userLocation) {
       return filtered
@@ -68,7 +71,7 @@ const Index = () => {
     }
 
     return filtered;
-  }, [reports, normalizedQuery, userLocation]);
+  }, [reports, normalizedQuery, userLocation, doseFilter, isLocationSearch]);
 
   const onlineReports = useMemo(
     () =>
@@ -80,8 +83,9 @@ const Index = () => {
             r.pharmacy_name?.toLowerCase().includes(normalizedQuery) ||
             r.medication?.toLowerCase().includes(normalizedQuery) ||
             r.dose?.toLowerCase().includes(normalizedQuery),
-        ),
-    [reports, normalizedQuery],
+        )
+        .filter((r) => doseFilter === "all" || r.dose === doseFilter),
+    [reports, normalizedQuery, doseFilter, isLocationSearch],
   );
 
   const EmptyState = ({ message }: { message: string }) => (
@@ -99,7 +103,20 @@ const Index = () => {
       <Header
         onOpenReport={() => setReportOpen(true)}
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          // User is typing manually — switch back to text filtering
+          if (isLocationSearch) {
+            setIsLocationSearch(false);
+            clearLocation();
+          }
+        }}
+        doseFilter={doseFilter}
+        onDoseFilterChange={setDoseFilter}
+        onPlaceSelected={(details: PlaceDetails) => {
+          setIsLocationSearch(true);
+          setManualLocation({ lat: details.lat, lng: details.lng });
+        }}
       />
 
       <main className="container mx-auto flex-1 px-4 py-6">
@@ -232,7 +249,7 @@ const Index = () => {
                   ) : (
                     <div className="space-y-3">
                       {onlineReports.map((report) => (
-                        <OnlineReportCard key={report.id} report={report} />
+                        <OnlineReportCard key={report.id} report={report} onVote={handleVote} />
                       ))}
                     </div>
                   )}
