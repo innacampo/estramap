@@ -4,7 +4,10 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+// Accept both names — lovable uses ANON_KEY, our docs say PUBLISHABLE_KEY
+const SUPABASE_KEY =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ??
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined);
 
 export const isDirectMode = Boolean(SUPABASE_URL && SUPABASE_KEY);
 

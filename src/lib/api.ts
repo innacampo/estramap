@@ -21,7 +21,12 @@ export async function fetchReports(): Promise<PharmacyReport[]> {
 
   const res = await fetch(`${API_BASE}/reports`);
   if (!res.ok) throw new Error("Failed to fetch reports");
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as PharmacyReport[];
+  } catch {
+    throw new Error("Server returned non-JSON response — is the API server running?");
+  }
 }
 
 export async function createReport(
