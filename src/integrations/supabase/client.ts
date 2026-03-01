@@ -1,4 +1,16 @@
-// Supabase is now accessed exclusively through the server API (server/index.ts).
-// This file is kept for reference. The client uses src/lib/api.ts instead.
-//
-// No API keys are exposed to the browser.
+// Direct Supabase client — used only when VITE_SUPABASE_URL is set (e.g. on lovable.ai).
+// When running with the Express server, the client uses /api/* instead and this is null.
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from './types';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+
+export const isDirectMode = Boolean(SUPABASE_URL && SUPABASE_KEY);
+
+export const supabase: SupabaseClient<Database> | null =
+  SUPABASE_URL && SUPABASE_KEY
+    ? createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true },
+      })
+    : null;

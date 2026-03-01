@@ -1,12 +1,24 @@
 import type { Tables } from "@/integrations/supabase/types";
+import { supabase, isDirectMode } from "@/integrations/supabase/client";
 
 type PharmacyReport = Tables<"pharmacy_reports">;
 
 const API_BASE = "/api";
 
-// ── Reports ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  Reports
+// ═══════════════════════════════════════════════════════════════
 
 export async function fetchReports(): Promise<PharmacyReport[]> {
+  if (isDirectMode && supabase) {
+    const { data, error } = await supabase
+      .from("pharmacy_reports")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data as PharmacyReport[];
+  }
+
   const res = await fetch(`${API_BASE}/reports`);
   if (!res.ok) throw new Error("Failed to fetch reports");
   return res.json();
@@ -15,6 +27,16 @@ export async function fetchReports(): Promise<PharmacyReport[]> {
 export async function createReport(
   report: Record<string, unknown>,
 ): Promise<PharmacyReport> {
+  if (isDirectMode && supabase) {
+    const { data, error } = await supabase
+      .from("pharmacy_reports")
+      .insert(report as Tables<"pharmacy_reports">)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data as PharmacyReport;
+  }
+
   const res = await fetch(`${API_BASE}/reports`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -31,6 +53,22 @@ export async function voteOnReport(
   id: string,
   type: "up" | "down",
 ): Promise<void> {
+  if (isDirectMode && supabase) {
+    const field = type === "up" ? "upvotes" : "downvotes";
+    const { data: report, error: fetchErr } = await supabase
+      .from("pharmacy_reports")
+      .select("upvotes, downvotes")
+      .eq("id", id)
+      .single();
+    if (fetchErr || !report) throw new Error("Report not found");
+    const { error } = await supabase
+      .from("pharmacy_reports")
+      .update({ [field]: ((report as Record<string, number>)[field] ?? 0) + 1 })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
   const res = await fetch(`${API_BASE}/reports/${id}/vote`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -39,23 +77,13 @@ export async function voteOnReport(
   if (!res.ok) throw new Error("Failed to vote");
 }
 
-// ── Google Places (proxied through our server) ─────────────────
+// ═══════════════════════════════════════════════════════════════
+//  Google Places
+// ═══════════════════════════════════════════════════════════════
 
 export interface PlacePrediction {
   description: string;
   place_id: string;
-}
-
-export async function searchPlaces(
-  input: string,
-): Promise<PlacePrediction[]> {
-  if (!input.trim()) return [];
-  const res = await fetch(
-    `${API_BASE}/places/autocomplete?input=${encodeURIComponent(input)}`,
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data.predictions as PlacePrediction[]) ?? [];
 }
 
 export interface PlaceDetails {
@@ -64,9 +92,31 @@ export interface PlaceDetails {
   lng: number;
 }
 
+export async function searchPlaces(
+  input: string,
+): Promise<PlacePrediction[]> {
+  if (!input.trim()) return [];
+
+  // In direct mode, use Google Maps JS API if loaded, otherwise return empty
+  if (isDirectMode) {
+    return googleAutocomplete(input);
+  }
+
+  const res = await fetch(
+    `${API_BASE}/places/autocomplete?input=${encodeURIComponent(input)}`,
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.predictions as PlacePrediction[]) ?? [];
+}
+
 export async function getPlaceDetails(
   placeId: string,
 ): Promise<PlaceDetails | null> {
+  if (isDirectMode) {
+    return googlePlaceDetails(placeId);
+  }
+
   const res = await fetch(
     `${API_BASE}/places/details?place_id=${encodeURIComponent(placeId)}`,
   );
@@ -79,4 +129,69 @@ export async function getPlaceDetails(
     lat: result.geometry.location.lat,
     lng: result.geometry.location.lng,
   };
+}
+
+// ── Google Maps JS helpers (direct / lovable mode) ─────────────
+
+let autocompleteService: google.maps.places.AutocompleteService | null = null;
+let placesService: google.maps.places.PlacesService | null = null;
+
+function getAutocompleteService(): google.maps.places.AutocompleteService | null {
+  if (autocompleteService) return autocompleteService;
+  if (typeof google === "undefined" || !google.maps?.places) return null;
+  autocompleteService = new google.maps.places.AutocompleteService();
+  return autocompleteService;
+}
+
+function getPlacesService(): google.maps.places.PlacesService | null {
+  if (placesService) return placesService;
+  if (typeof google === "undefined" || !google.maps?.places) return null;
+  const div = document.createElement("div");
+  placesService = new google.maps.places.PlacesService(div);
+  return placesService;
+}
+
+function googleAutocomplete(input: string): Promise<PlacePrediction[]> {
+  const svc = getAutocompleteService();
+  if (!svc) return Promise.resolve([]);
+
+  return new Promise((resolve) => {
+    svc.getPlacePredictions(
+      { input, types: ["address"] },
+      (predictions, status) => {
+        if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
+          resolve([]);
+          return;
+        }
+        resolve(
+          predictions.map((p) => ({
+            description: p.description,
+            place_id: p.place_id,
+          })),
+        );
+      },
+    );
+  });
+}
+
+function googlePlaceDetails(placeId: string): Promise<PlaceDetails | null> {
+  const svc = getPlacesService();
+  if (!svc) return Promise.resolve(null);
+
+  return new Promise((resolve) => {
+    svc.getDetails(
+      { placeId, fields: ["formatted_address", "geometry"] },
+      (place, status) => {
+        if (status !== google.maps.places.PlacesServiceStatus.OK || !place?.geometry?.location) {
+          resolve(null);
+          return;
+        }
+        resolve({
+          formatted_address: place.formatted_address ?? "",
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        });
+      },
+    );
+  });
 }
