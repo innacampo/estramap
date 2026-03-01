@@ -9,11 +9,6 @@ map.  The project can run purely client‑side (using Supabase and Google
 APIs directly) or with an optional Express+Supabase proxy for increased
 security and added helper endpoints.
 
-> ⚠️ This repository was originally created as part of a [lovable.ai](https://lovable.ai)
-> design exercise.  All functionality is available in a production‑ready form
-> and the code is fully open‑source, but you should still audit the backend
-> before deploying for real‑world use.
-
 ---
 
 ## Features
