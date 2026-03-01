@@ -274,7 +274,7 @@ const Index = () => {
 
       <footer className="border-t bg-card py-4 text-center text-sm text-muted-foreground">
         <p>
-          EstraMap is a community-powered tool. Always verify stock with your
+          ESTRAMAP is a community-powered tool. Always verify stock with your
           pharmacy before visiting.
         </p>
       </footer>
