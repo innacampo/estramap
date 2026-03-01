@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Tables } from "@/integrations/supabase/types";
@@ -89,32 +89,50 @@ function MarkerItem({
   );
 }
 
+/** Imperatively fly/pan the map when `center` changes */
+function RecenterMap({ center }: { center: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) map.flyTo(center, 13, { duration: 1.2 });
+  }, [center, map]);
+  return null;
+}
+
 interface PharmacyMapProps {
   reports: PharmacyReport[];
   highlightedId: string | null;
   onHover: (id: string | null) => void;
+  userLocation?: { lat: number; lng: number } | null;
 }
 
-const PharmacyMap = ({ reports, highlightedId, onHover }: PharmacyMapProps) => {
-  // Center remains focused on the Atlanta area
-  const center: [number, number] = [33.7900, -84.3880];
+const PharmacyMap = ({ reports, highlightedId, onHover, userLocation }: PharmacyMapProps) => {
+  const defaultCenter: [number, number] = [33.7900, -84.3880];
+  const flyTo: [number, number] | null = userLocation
+    ? [userLocation.lat, userLocation.lng]
+    : null;
 
   return (
     <MapContainer
-      center={center}
+      center={defaultCenter}
       zoom={12}
       className="h-full w-full rounded-lg"
       style={{ minHeight: "400px" }}
       scrollWheelZoom
     >
-      {/* Updated TileLayer to CartoDB Positron: 
-        This version is "light_all" which is clean and has no terrain/topography colors.
-      */}
+      <RecenterMap center={flyTo} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
       />
-      
+
+      {userLocation && (
+        <Circle
+          center={[userLocation.lat, userLocation.lng]}
+          radius={200}
+          pathOptions={{ color: "hsl(221,83%,53%)", fillColor: "hsl(221,83%,53%)", fillOpacity: 0.3, weight: 2 }}
+        />
+      )}
+
       {reports.map((report) => (
         <MarkerItem
           key={report.id}
