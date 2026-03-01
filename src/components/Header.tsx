@@ -81,8 +81,9 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange, doseFilter, onDoseF
           <h1 className="text-2xl font-black italic tracking-tighter text-primary">ESTRAMAP</h1>
         </div>
 
-        <div className="flex flex-1 items-center gap-3 md:max-w-2xl">
-          <div ref={wrapperRef} className="relative flex-1">
+        <div className="flex flex-col flex-1 gap-3 w-full md:flex-row md:items-center md:max-w-2xl">
+          {/* search input should take full width on mobile and be allowed to shrink */}
+          <div ref={wrapperRef} className="relative w-full min-w-0">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground z-10" />
             <Input
               placeholder="Enter your address or zip code"
@@ -110,8 +111,12 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange, doseFilter, onDoseF
             )}
           </div>
 
-          <Select value={doseFilter} onValueChange={onDoseFilterChange}>
-            <SelectTrigger className="w-[130px] shrink-0" aria-label="Filter by dose">
+          <Select
+            value={doseFilter}
+            onValueChange={onDoseFilterChange}
+            className="w-full sm:w-[130px] shrink-0"
+          >
+            <SelectTrigger aria-label="Filter by dose">
               <SelectValue placeholder="All doses" />
             </SelectTrigger>
             <SelectContent>
@@ -122,7 +127,10 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange, doseFilter, onDoseF
             </SelectContent>
           </Select>
 
-          <Button onClick={onOpenReport} className="shrink-0 gap-1.5">
+          <Button
+            onClick={onOpenReport}
+            className="w-full sm:w-auto shrink-0 gap-1.5"
+          >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Report Found Stock</span>
             <span className="sm:hidden">Report</span>
