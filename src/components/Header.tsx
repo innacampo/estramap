@@ -1,4 +1,5 @@
 import { MapPin, Search, Plus, Loader2 } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,6 +135,8 @@ const Header = ({ onOpenReport, searchQuery, onSearchChange, doseFilter, onDoseF
             <span className="hidden sm:inline">Report Found Stock</span>
             <span className="sm:hidden">Report</span>
           </Button>
+
+          <ThemeToggle />
         </div>
       </div>
     </header>);
