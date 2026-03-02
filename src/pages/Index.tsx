@@ -29,6 +29,7 @@ const Index = () => {
   } = useQuery({
     queryKey: ["pharmacy_reports"],
     queryFn: fetchReports,
+    refetchInterval: 60_000,
   });
 
   const handleVote = useCallback(
