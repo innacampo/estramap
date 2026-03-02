@@ -17,11 +17,12 @@ increased security.
 - Searchable feed of **local pharmacy reports** (name, address, medication, dose,
   stock status, time ago)
 - **Online/mailer reports** (Amazon Pharmacy, Honeybee, etc.)
-- Color‑coded status badges (green = in stock, yellow = low stock, red = out)
+- Color‑coded status badges (green = in stock, yellow = low stock, red = out or ❌ out of stock)
 - Interactive **map view** powered by React‑Leaflet + OpenStreetMap
 - Voting system to confirm whether a report is still accurate
 - “Report stock” modal with step‑by‑step form and optional GPS lookup
 - Support for both a simple static build or a full server‑side API proxy
+- Database security hardening via Supabase Row‑Level Security and server-side RPCs with rate‑limit safety nets
 - Responsive and accessible UI built with Tailwind CSS and shadcn/ui
 - Mock data seeded on first load to make the site feel alive
 - Optional Supabase backend with upvotes/downvotes
@@ -117,8 +118,8 @@ back to calling Supabase directly if the proxy is unavailable.
 
 ```
 GET    /api/reports             # list reports (latest first)
-POST   /api/reports             # create a new report ({ type, pharmacy_name, … })
-PATCH  /api/reports/:id/vote    # vote on a report (body: { type: "up"|"down" })
+POST   /api/reports             # create a new report. Payload must include `type` ("local"|"online"), `pharmacy_name`, `medication`, `dose`, and `status` ("in-stock"|"low-stock"|"out-of-stock"); `address`, `website_url`, `notes`, `lat` and `lng` are optional. All writes go through a secure RPC on the server with validation and rate‑limiting.
+PATCH  /api/reports/:id/vote    # increment up or down votes for a report (body: { type: "up"|"down" }). This also uses a restricted RPC so callers cannot modify other fields.
 ```
 
 The Supabase table schema is defined under `supabase/migrations` and the
@@ -140,7 +141,9 @@ A few deployment options:
 
 Supabase migrations in `supabase/migrations` can be applied with the
 `supabase` CLI if you're running your own project; see Supabase docs for
-details.
+details.  Recent migrations add an explicit `out-of-stock` status, replace
+open INSERT/UPDATE policies with security‑definer RPCs (`create_report` and
+`vote_report`), and include a database‑level rate‑limit safety net.
 
 ---
 
