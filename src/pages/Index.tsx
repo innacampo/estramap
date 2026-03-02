@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import SEO from "@/components/SEO";
 import { Map, Loader2, AlertCircle, Inbox, Navigation, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
@@ -101,6 +102,7 @@ const Index = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <SEO />
       <Header
         onOpenReport={() => setReportOpen(true)}
         searchQuery={searchQuery}
