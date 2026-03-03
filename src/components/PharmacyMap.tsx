@@ -102,12 +102,23 @@ function MarkerItem({
   );
 }
 
-/** Imperatively fly/pan the map when `center` changes */
+/** Fly to center once when it changes, then let user pan freely */
 function RecenterMap({ center }: { center: [number, number] | null }) {
   const map = useMap();
+  const lastCenter = useRef<string | null>(null);
+
   useEffect(() => {
-    if (center) map.flyTo(center, 13, { duration: 1.2 });
+    if (!center) {
+      lastCenter.current = null;
+      return;
+    }
+    const key = `${center[0]},${center[1]}`;
+    if (key !== lastCenter.current) {
+      lastCenter.current = key;
+      map.flyTo(center, 13, { duration: 1.2 });
+    }
   }, [center, map]);
+
   return null;
 }
 
