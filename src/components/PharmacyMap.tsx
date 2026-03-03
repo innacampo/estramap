@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useTheme } from "next-themes";
 import type { Tables } from "@/integrations/supabase/types";
 
 type PharmacyReport = Tables<"pharmacy_reports">;
@@ -117,6 +118,23 @@ interface PharmacyMapProps {
   userLocation?: { lat: number; lng: number } | null;
 }
 
+/** Swap tile layer when theme changes */
+function ThemeTileLayer() {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const url = isDark
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
+  return (
+    <TileLayer
+      key={isDark ? "dark" : "light"}
+      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      url={url}
+    />
+  );
+}
+
 const PharmacyMap = ({ reports, highlightedId, onHover, userLocation }: PharmacyMapProps) => {
   const defaultCenter: [number, number] = [33.8743, -84.3133];
   const flyTo: [number, number] | null = userLocation
@@ -132,10 +150,7 @@ const PharmacyMap = ({ reports, highlightedId, onHover, userLocation }: Pharmacy
       scrollWheelZoom
     >
       <RecenterMap center={flyTo} />
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-      />
+      <ThemeTileLayer />
 
       {userLocation && (
         <Circle
