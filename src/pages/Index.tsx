@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import SEO from "@/components/SEO";
 import { Map, Loader2, AlertCircle, Inbox, Navigation, X } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import LocalReportCard from "@/components/LocalReportCard";
 import OnlineReportCard from "@/components/OnlineReportCard";
@@ -13,6 +13,7 @@ import { fetchReports, voteOnReport, type PlaceDetails } from "@/lib/api";
 import { useGeolocation, distanceMiles } from "@/hooks/use-geolocation";
 
 const Index = () => {
+  const queryClient = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLocationSearch, setIsLocationSearch] = useState(false);
@@ -282,7 +283,24 @@ const Index = () => {
         </p>
       </footer>
 
-      <ReportModal open={reportOpen} onOpenChange={setReportOpen} onReportSubmitted={refetch} />
+      <ReportModal
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        onReportSubmitted={(optimistic) => {
+          queryClient.setQueryData<typeof reports>(["pharmacy_reports"], (old = []) => [
+            {
+              id: `optimistic-${Date.now()}`,
+              created_at: new Date().toISOString(),
+              upvotes: 0,
+              downvotes: 0,
+              ...optimistic,
+            } as (typeof reports)[number],
+            ...old,
+          ]);
+          // Background refetch to reconcile with real server data
+          refetch();
+        }}
+      />
     </div>
   );
 };
