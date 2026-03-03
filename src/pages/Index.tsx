@@ -11,8 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { fetchReports, voteOnReport, type PlaceDetails } from "@/lib/api";
 import { useGeolocation, distanceMiles } from "@/hooks/use-geolocation";
+import { useRealtimeReports } from "@/hooks/use-realtime-reports";
 
 const Index = () => {
+  useRealtimeReports();
   const queryClient = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
