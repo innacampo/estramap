@@ -24,7 +24,7 @@ import { toast } from "sonner";
 interface ReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onReportSubmitted?: () => void;
+  onReportSubmitted?: (optimistic: Record<string, unknown>) => void;
 }
 
 type PharmacyType = "local" | "online";
@@ -86,7 +86,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
         }
       }
 
-      await createReport({
+      const reportPayload = {
         type: pharmacyType,
         pharmacy_name: pharmacyType === "local" ? pharmacyName : websiteName,
         address: pharmacyType === "local" ? address : null,
@@ -97,11 +97,15 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
         notes: notes || null,
         lat: reportLat,
         lng: reportLng,
-      });
+      };
+
+      // Optimistically notify parent before awaiting server
+      onReportSubmitted?.(reportPayload);
+
+      await createReport(reportPayload);
 
       setSubmitted(true);
       lastSubmitRef.current = Date.now();
-      onReportSubmitted?.();
       setTimeout(() => {
         setSubmitted(false);
         resetForm();
