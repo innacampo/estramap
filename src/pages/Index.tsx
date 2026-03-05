@@ -8,6 +8,7 @@ import LocalReportCard from "@/components/LocalReportCard";
 import OnlineReportCard from "@/components/OnlineReportCard";
 import PharmacyMap from "@/components/PharmacyMap";
 import ReportModal from "@/components/ReportModal";
+import HeroOnboarding from "@/components/HeroOnboarding";
 import MapLegend from "@/components/MapLegend";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -157,6 +158,11 @@ const Index = () => {
       />
 
       <main className="container mx-auto flex-1 px-4 py-6">
+        {/* Hero for new visitors — show when no reports exist */}
+        {!isLoading && reports.length === 0 && (
+          <HeroOnboarding onOpenReport={() => setReportOpen(true)} />
+        )}
+
         <AnimatePresence>
           {isError && (
             <motion.div
