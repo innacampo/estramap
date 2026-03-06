@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import SEO from "@/components/SEO";
 import { Map, Loader2, AlertCircle, Inbox, Navigation, X, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
