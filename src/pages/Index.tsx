@@ -45,7 +45,13 @@ const Index = () => {
   const [doseFilter, setDoseFilter] = useState("all");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [showMobileMap, setShowMobileMap] = useState(false);
-  const { userLocation, isLocating, requestLocation, clearLocation, setManualLocation } = useGeolocation();
+  const { userLocation, isLocating, error: geoError, requestLocation, clearLocation, setManualLocation } = useGeolocation();
+
+  useEffect(() => {
+    if (geoError) {
+      toast.error(geoError);
+    }
+  }, [geoError]);
 
   const {
     data: reports = [],
