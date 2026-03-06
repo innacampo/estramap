@@ -125,12 +125,16 @@ export async function voteOnReport(
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Places (Nominatim / OpenStreetMap)
+//  Places — via edge function (bypasses CORS)
 // ═══════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export interface PlacePrediction {
   description: string;
   place_id: string;
+  source?: string;
 }
 
 export interface PlaceDetails {
@@ -143,19 +147,18 @@ export async function searchPlaces(
   input: string,
 ): Promise<PlacePrediction[]> {
   if (!input.trim()) return [];
-
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(input)}`,
-      { headers: { "User-Agent": "EstraMap/1.0" } },
+      `${SUPABASE_URL}/functions/v1/geocode?action=search&q=${encodeURIComponent(input)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+        },
+      },
     );
     if (!res.ok) return [];
-    const data: Array<{ display_name: string; lat: string; lon: string }> =
-      await res.json();
-    return data.map((item) => ({
-      description: item.display_name,
-      place_id: `nominatim:${item.lat}:${item.lon}:${item.display_name}`,
-    }));
+    return await res.json();
   } catch {
     return [];
   }
@@ -164,6 +167,7 @@ export async function searchPlaces(
 export async function getPlaceDetails(
   placeId: string,
 ): Promise<PlaceDetails | null> {
+  // Nominatim results encode coords in the place_id
   if (placeId.startsWith("nominatim:")) {
     const parts = placeId.split(":");
     if (parts.length < 4) return null;
@@ -173,33 +177,45 @@ export async function getPlaceDetails(
     if (isNaN(lat) || isNaN(lng)) return null;
     return { formatted_address, lat, lng };
   }
-  return null;
+  // Google place_id — fetch details via edge function
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/functions/v1/geocode?action=details&place_id=${encodeURIComponent(placeId)}&q=details`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Geocoding (address → lat/lng)
+//  Geocoding (address → lat/lng) — via edge function
 // ═══════════════════════════════════════════════════════════════
 
-/** Geocode an address string to { lat, lng } via Nominatim. */
 export async function geocodeAddress(
   address: string,
 ): Promise<{ lat: number; lng: number } | null> {
   if (!address.trim()) return null;
-
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
-      { headers: { "User-Agent": "EstraMap/1.0" } },
+      `${SUPABASE_URL}/functions/v1/geocode?action=geocode&q=${encodeURIComponent(address)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+        },
+      },
     );
-    if (res.ok) {
-      const data = await res.json();
-      if (data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-      }
-    }
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
-    // give up
+    return null;
   }
-
-  return null;
 }
