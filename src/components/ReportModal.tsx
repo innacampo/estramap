@@ -202,7 +202,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
                         <SelectTrigger className="rounded-xl h-11 border-border/50">
                           <SelectValue placeholder="Dose" />
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl">
+                        <SelectContent className="rounded-xl" position="popper" sideOffset={4}>
                           <SelectItem value="0.025mg">0.025mg</SelectItem>
                           <SelectItem value="0.05mg">0.05mg</SelectItem>
                           <SelectItem value="0.075mg">0.075mg</SelectItem>
