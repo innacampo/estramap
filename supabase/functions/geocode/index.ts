@@ -96,8 +96,17 @@ async function googlePlaceDetails(placeId: string, apiKey: string) {
 // ── Nominatim (fallback) ──────────────────────────────────────
 
 async function nominatimSearch(query: string) {
+  const params = new URLSearchParams({
+    format: "json",
+    addressdetails: "1",
+    limit: "5",
+    q: query,
+    countrycodes: "us",
+    viewbox: "-85.0,34.3667,-83.6667,33.2",
+    bounded: "1",
+  });
   const res = await fetch(
-    `${NOMINATIM_BASE}/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(query)}`,
+    `${NOMINATIM_BASE}/search?${params.toString()}`,
     { headers: { "User-Agent": "EstraMap/1.0 (lovable.app)" } }
   );
   if (!res.ok) {
