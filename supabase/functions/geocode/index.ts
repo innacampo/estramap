@@ -60,7 +60,7 @@ serve(async (req) => {
 
 async function googleAutocomplete(input: string, apiKey: string) {
   const res = await fetch(
-    `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=geocode|establishment&key=${apiKey}`
+    `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=geocode|establishment&components=country:us&location=33.7833,-84.3333&radius=80000&key=${apiKey}`
   );
   const data = await res.json();
   const predictions = (data.predictions ?? []).map((p: any) => ({
