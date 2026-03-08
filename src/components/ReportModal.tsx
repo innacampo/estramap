@@ -198,17 +198,17 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
                       <Input value="Estradiol Patch" disabled className="bg-muted/50 truncate rounded-xl h-11 border-border/50" />
                     </div>
                     <div className="w-28 shrink-0">
-                      <Select value={dose} onValueChange={setDose} modal={false}>
-                        <SelectTrigger className="rounded-xl h-11 border-border/50">
-                          <SelectValue placeholder="Dose" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl" position="popper" sideOffset={4}>
-                          <SelectItem value="0.025mg">0.025mg</SelectItem>
-                          <SelectItem value="0.05mg">0.05mg</SelectItem>
-                          <SelectItem value="0.075mg">0.075mg</SelectItem>
-                          <SelectItem value="0.1mg">0.1mg</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <select
+                        value={dose}
+                        onChange={(e) => setDose(e.target.value)}
+                        className="flex h-11 w-full items-center rounded-xl border border-border/50 bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      >
+                        <option value="" disabled>Dose</option>
+                        <option value="0.025mg">0.025mg</option>
+                        <option value="0.05mg">0.05mg</option>
+                        <option value="0.075mg">0.075mg</option>
+                        <option value="0.1mg">0.1mg</option>
+                      </select>
                     </div>
                   </div>
                 </div>
