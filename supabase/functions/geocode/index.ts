@@ -60,7 +60,7 @@ serve(async (req) => {
 
 async function googleAutocomplete(input: string, apiKey: string) {
   const res = await fetch(
-    `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=geocode|establishment&components=country:us&location=33.7833,-84.3333&radius=80000&key=${apiKey}`
+    `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=geocode|establishment&key=${apiKey}`
   );
   const data = await res.json();
   const predictions = (data.predictions ?? []).map((p: any) => ({
@@ -96,17 +96,8 @@ async function googlePlaceDetails(placeId: string, apiKey: string) {
 // ── Nominatim (fallback) ──────────────────────────────────────
 
 async function nominatimSearch(query: string) {
-  const params = new URLSearchParams({
-    format: "json",
-    addressdetails: "1",
-    limit: "5",
-    q: query,
-    countrycodes: "us",
-    viewbox: "-85.0,34.3667,-83.6667,33.2",
-    bounded: "1",
-  });
   const res = await fetch(
-    `${NOMINATIM_BASE}/search?${params.toString()}`,
+    `${NOMINATIM_BASE}/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(query)}`,
     { headers: { "User-Agent": "EstraMap/1.0 (lovable.app)" } }
   );
   if (!res.ok) {
@@ -126,14 +117,8 @@ async function nominatimSearch(query: string) {
 }
 
 async function nominatimGeocode(query: string) {
-  const params = new URLSearchParams({
-    format: "json",
-    limit: "1",
-    q: query,
-    countrycodes: "us",
-  });
   const res = await fetch(
-    `${NOMINATIM_BASE}/search?${params.toString()}`,
+    `${NOMINATIM_BASE}/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
     { headers: { "User-Agent": "EstraMap/1.0 (lovable.app)" } }
   );
   if (!res.ok) {
