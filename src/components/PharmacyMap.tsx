@@ -83,6 +83,7 @@ function RecenterMap({ center }: { center: [number, number] | null }) {
   const lastCenter = useRef<string | null>(null);
   useEffect(() => {
     if (!center) { lastCenter.current = null; return; }
+    if (isNaN(center[0]) || isNaN(center[1])) return;
     const key = `${center[0]},${center[1]}`;
     if (key !== lastCenter.current) { lastCenter.current = key; map.flyTo(center, 13, { duration: 1.2 }); }
   }, [center, map]);
