@@ -14,25 +14,46 @@ serve(async (req) => {
   }
 
   const url = new URL(req.url);
-  const action = url.searchParams.get("action"); // "search" or "details"
-  const query = url.searchParams.get("q") ?? "";
+  let action = url.searchParams.get("action") ?? "";
+  let query = url.searchParams.get("q") ?? "";
+  let placeId = url.searchParams.get("place_id") ?? "";
 
-  if (!query.trim()) {
-    return new Response(JSON.stringify([]), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (req.method === "POST") {
+    const body = await req.json().catch(() => ({}));
+    if (body && typeof body === "object") {
+      const b = body as Record<string, unknown>;
+      if (typeof b.action === "string") action = b.action;
+      if (typeof b.q === "string") query = b.q;
+      if (typeof b.place_id === "string") placeId = b.place_id;
+    }
   }
 
   // Check if Google Places API key is available
   const googleKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
 
   try {
+    if (action === "details") {
+      if (!placeId.trim()) {
+        return new Response(JSON.stringify(null), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (googleKey) {
+        return await googlePlaceDetails(placeId, googleKey);
+      }
+      return new Response(JSON.stringify(null), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!query.trim()) {
+      return new Response(JSON.stringify([]), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (googleKey && action === "search") {
       return await googleAutocomplete(query, googleKey);
-    }
-    if (googleKey && action === "details") {
-      const placeId = url.searchParams.get("place_id") ?? "";
-      return await googlePlaceDetails(placeId, googleKey);
     }
 
     // Fallback: Nominatim (no CORS issues from server-side)
