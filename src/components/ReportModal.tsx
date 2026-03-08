@@ -198,7 +198,7 @@ const ReportModal = ({ open, onOpenChange, onReportSubmitted }: ReportModalProps
                       <Input value="Estradiol Patch" disabled className="bg-muted/50 truncate rounded-xl h-11 border-border/50" />
                     </div>
                     <div className="w-28 shrink-0">
-                      <Select value={dose} onValueChange={setDose}>
+                      <Select value={dose} onValueChange={setDose} modal={false}>
                         <SelectTrigger className="rounded-xl h-11 border-border/50">
                           <SelectValue placeholder="Dose" />
                         </SelectTrigger>
