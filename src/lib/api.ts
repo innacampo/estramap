@@ -128,8 +128,20 @@ export async function voteOnReport(
 //  Places — via edge function (bypasses CORS)
 // ═══════════════════════════════════════════════════════════════
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+async function invokeGeocode<T>(payload: Record<string, unknown>): Promise<T | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke("geocode", {
+      body: payload,
+    });
+    if (error) return null;
+    return (data ?? null) as T | null;
+  } catch {
+    return null;
+  }
+}
 
 export interface PlacePrediction {
   description: string;
@@ -146,22 +158,16 @@ export interface PlaceDetails {
 export async function searchPlaces(
   input: string,
 ): Promise<PlacePrediction[]> {
-  if (!input.trim()) return [];
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/functions/v1/geocode?action=search&q=${encodeURIComponent(input)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
+  const query = input.trim();
+  if (!query) return [];
+
+  const data = await invokeGeocode<unknown>({ action: "search", q: query });
+  if (!Array.isArray(data)) return [];
+
+  return data.filter((item): item is PlacePrediction => {
+    if (!isRecord(item)) return false;
+    return typeof item.description === "string" && typeof item.place_id === "string";
+  });
 }
 
 export async function getPlaceDetails(
@@ -174,25 +180,19 @@ export async function getPlaceDetails(
     const lat = parseFloat(parts[1]);
     const lng = parseFloat(parts[2]);
     const formatted_address = parts.slice(3).join(":");
-    if (isNaN(lat) || isNaN(lng)) return null;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
     return { formatted_address, lat, lng };
   }
-  // Google place_id — fetch details via edge function
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/functions/v1/geocode?action=details&place_id=${encodeURIComponent(placeId)}&q=details`,
-      {
-        headers: {
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+
+  const data = await invokeGeocode<unknown>({ action: "details", place_id: placeId });
+  if (!isRecord(data)) return null;
+
+  const lat = typeof data.lat === "number" ? data.lat : NaN;
+  const lng = typeof data.lng === "number" ? data.lng : NaN;
+  const formattedAddress = typeof data.formatted_address === "string" ? data.formatted_address : "";
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !formattedAddress) return null;
+  return { formatted_address: formattedAddress, lat, lng };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -202,20 +202,15 @@ export async function getPlaceDetails(
 export async function geocodeAddress(
   address: string,
 ): Promise<{ lat: number; lng: number } | null> {
-  if (!address.trim()) return null;
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/functions/v1/geocode?action=geocode&q=${encodeURIComponent(address)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+  const query = address.trim();
+  if (!query) return null;
+
+  const data = await invokeGeocode<unknown>({ action: "geocode", q: query });
+  if (!isRecord(data)) return null;
+
+  const lat = typeof data.lat === "number" ? data.lat : NaN;
+  const lng = typeof data.lng === "number" ? data.lng : NaN;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  return { lat, lng };
 }
