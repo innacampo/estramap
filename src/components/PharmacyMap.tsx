@@ -128,9 +128,9 @@ const PharmacyMap = ({ reports, highlightedId, onHover, userLocation }: Pharmacy
     <MapContainer center={defaultCenter} zoom={12} className="h-full w-full" style={{ minHeight: "400px" }} scrollWheelZoom>
       <RecenterMap center={flyTo} />
       <ThemeTileLayer />
-      {userLocation && (
+      {validLocation && (
         <Circle
-          center={[userLocation.lat, userLocation.lng]}
+          center={[validLocation.lat, validLocation.lng]}
           radius={200}
           pathOptions={{ color: "hsl(168,55%,32%)", fillColor: "hsl(168,55%,32%)", fillOpacity: 0.2, weight: 2 }}
         />
