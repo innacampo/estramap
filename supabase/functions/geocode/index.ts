@@ -126,8 +126,14 @@ async function nominatimSearch(query: string) {
 }
 
 async function nominatimGeocode(query: string) {
+  const params = new URLSearchParams({
+    format: "json",
+    limit: "1",
+    q: query,
+    countrycodes: "us",
+  });
   const res = await fetch(
-    `${NOMINATIM_BASE}/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
+    `${NOMINATIM_BASE}/search?${params.toString()}`,
     { headers: { "User-Agent": "EstraMap/1.0 (lovable.app)" } }
   );
   if (!res.ok) {
