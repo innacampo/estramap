@@ -85,7 +85,14 @@ function RecenterMap({ center }: { center: [number, number] | null }) {
     if (!center) { lastCenter.current = null; return; }
     if (isNaN(center[0]) || isNaN(center[1])) return;
     const key = `${center[0]},${center[1]}`;
-    if (key !== lastCenter.current) { lastCenter.current = key; map.flyTo(center, 13, { duration: 1.2 }); }
+    if (key !== lastCenter.current) {
+      lastCenter.current = key;
+      try {
+        map.flyTo(center, 13, { duration: 1.2 });
+      } catch {
+        try { map.setView(center, 13); } catch { /* map not ready */ }
+      }
+    }
   }, [center, map]);
   return null;
 }
@@ -114,15 +121,16 @@ interface PharmacyMapProps {
 
 const PharmacyMap = ({ reports, highlightedId, onHover, userLocation }: PharmacyMapProps) => {
   const defaultCenter: [number, number] = [33.8743, -84.3133];
-  const flyTo: [number, number] | null = userLocation ? [userLocation.lat, userLocation.lng] : null;
+  const validLocation = userLocation && !isNaN(userLocation.lat) && !isNaN(userLocation.lng) ? userLocation : null;
+  const flyTo: [number, number] | null = validLocation ? [validLocation.lat, validLocation.lng] : null;
 
   return (
     <MapContainer center={defaultCenter} zoom={12} className="h-full w-full" style={{ minHeight: "400px" }} scrollWheelZoom>
       <RecenterMap center={flyTo} />
       <ThemeTileLayer />
-      {userLocation && (
+      {validLocation && (
         <Circle
-          center={[userLocation.lat, userLocation.lng]}
+          center={[validLocation.lat, validLocation.lng]}
           radius={200}
           pathOptions={{ color: "hsl(168,55%,32%)", fillColor: "hsl(168,55%,32%)", fillOpacity: 0.2, weight: 2 }}
         />
