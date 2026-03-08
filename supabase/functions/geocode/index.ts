@@ -1,75 +1,64 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const ALLOWED_ORIGINS = [
-  "https://estramap.lovable.app",
-  "https://id-preview--12aea6a9-0dca-4138-88ad-29b24fe87a59.lovable.app",
-  "http://localhost:5173",
-  "http://localhost:8080",
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get("origin") ?? "";
-  const allowed = ALLOWED_ORIGINS.some((o) => origin === o || origin.endsWith(".lovable.app"));
-  return {
-    "Access-Control-Allow-Origin": allowed ? origin : ALLOWED_ORIGINS[0],
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
 const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
 
 serve(async (req) => {
-  const cors = getCorsHeaders(req);
-
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: cors });
+    return new Response(null, { headers: corsHeaders });
   }
 
   const url = new URL(req.url);
-  const action = url.searchParams.get("action");
+  const action = url.searchParams.get("action"); // "search" or "details"
   const query = url.searchParams.get("q") ?? "";
 
   if (!query.trim()) {
     return new Response(JSON.stringify([]), {
-      headers: { ...cors, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
+  // Check if Google Places API key is available
   const googleKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
 
   try {
     if (googleKey && action === "search") {
-      return await googleAutocomplete(query, googleKey, cors);
+      return await googleAutocomplete(query, googleKey);
     }
     if (googleKey && action === "details") {
       const placeId = url.searchParams.get("place_id") ?? "";
-      return await googlePlaceDetails(placeId, googleKey, cors);
+      return await googlePlaceDetails(placeId, googleKey);
     }
 
+    // Fallback: Nominatim (no CORS issues from server-side)
     if (action === "search") {
-      return await nominatimSearch(query, cors);
+      return await nominatimSearch(query);
     }
     if (action === "geocode") {
-      return await nominatimGeocode(query, cors);
+      return await nominatimGeocode(query);
     }
 
     return new Response(JSON.stringify({ error: "Invalid action" }), {
       status: 400,
-      headers: { ...cors, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("Geocode function error:", err);
     return new Response(
-      JSON.stringify({ error: "An error occurred processing your request" }),
-      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
 
 // ── Google Places ──────────────────────────────────────────────
 
-async function googleAutocomplete(input: string, apiKey: string, cors: Record<string, string>) {
+async function googleAutocomplete(input: string, apiKey: string) {
   const res = await fetch(
     `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=geocode|establishment&components=country:us&location=33.7833,-84.3333&radius=80000&key=${apiKey}`
   );
@@ -80,11 +69,11 @@ async function googleAutocomplete(input: string, apiKey: string, cors: Record<st
     source: "google",
   }));
   return new Response(JSON.stringify(predictions), {
-    headers: { ...cors, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
-async function googlePlaceDetails(placeId: string, apiKey: string, cors: Record<string, string>) {
+async function googlePlaceDetails(placeId: string, apiKey: string) {
   const res = await fetch(
     `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=formatted_address,geometry&key=${apiKey}`
   );
@@ -96,17 +85,17 @@ async function googlePlaceDetails(placeId: string, apiKey: string, cors: Record<
         lat: data.result.geometry.location.lat,
         lng: data.result.geometry.location.lng,
       }),
-      { headers: { ...cors, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
   return new Response(JSON.stringify(null), {
-    headers: { ...cors, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
 // ── Nominatim (fallback) ──────────────────────────────────────
 
-async function nominatimSearch(query: string, cors: Record<string, string>) {
+async function nominatimSearch(query: string) {
   const params = new URLSearchParams({
     format: "json",
     addressdetails: "1",
@@ -122,7 +111,7 @@ async function nominatimSearch(query: string, cors: Record<string, string>) {
   );
   if (!res.ok) {
     return new Response(JSON.stringify([]), {
-      headers: { ...cors, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
   const data: Array<{ display_name: string; lat: string; lon: string }> = await res.json();
@@ -132,11 +121,11 @@ async function nominatimSearch(query: string, cors: Record<string, string>) {
     source: "nominatim",
   }));
   return new Response(JSON.stringify(predictions), {
-    headers: { ...cors, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
-async function nominatimGeocode(query: string, cors: Record<string, string>) {
+async function nominatimGeocode(query: string) {
   const params = new URLSearchParams({
     format: "json",
     limit: "1",
@@ -149,17 +138,17 @@ async function nominatimGeocode(query: string, cors: Record<string, string>) {
   );
   if (!res.ok) {
     return new Response(JSON.stringify(null), {
-      headers: { ...cors, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
   const data = await res.json();
   if (data.length > 0) {
     return new Response(
       JSON.stringify({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }),
-      { headers: { ...cors, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
   return new Response(JSON.stringify(null), {
-    headers: { ...cors, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }

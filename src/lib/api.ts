@@ -108,12 +108,20 @@ export async function voteOnReport(
     _serverAvailable = false;
   }
 
-  // Direct Supabase fallback — use the secure vote_report RPC
-  const { error: rpcErr } = await supabase.rpc("vote_report", {
-    report_id: id,
-    vote_type: voteType,
-  });
-  if (rpcErr) throw new Error(rpcErr.message);
+  // Direct Supabase fallback — increment the appropriate column
+  const column = voteType === "up" ? "upvotes" : "downvotes";
+  const { data: current, error: fetchErr } = await supabase
+    .from("pharmacy_reports")
+    .select(column)
+    .eq("id", id)
+    .single();
+  if (fetchErr) throw new Error(fetchErr.message);
+
+  const { error: updateErr } = await supabase
+    .from("pharmacy_reports")
+    .update({ [column]: ((current as Record<string, number>)[column] ?? 0) + 1 })
+    .eq("id", id);
+  if (updateErr) throw new Error(updateErr.message);
 }
 
 // ═══════════════════════════════════════════════════════════════

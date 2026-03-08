@@ -70,10 +70,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      vote_report: {
-        Args: { report_id: string; vote_type: string }
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
