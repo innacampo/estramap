@@ -159,6 +159,7 @@ const Index = () => {
         doseFilter={doseFilter}
         onDoseFilterChange={setDoseFilter}
         onPlaceSelected={(details: PlaceDetails) => {
+          if (isNaN(details.lat) || isNaN(details.lng)) return;
           setIsLocationSearch(true);
           setManualLocation({ lat: details.lat, lng: details.lng });
         }}
