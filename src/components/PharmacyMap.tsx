@@ -121,7 +121,8 @@ interface PharmacyMapProps {
 
 const PharmacyMap = ({ reports, highlightedId, onHover, userLocation }: PharmacyMapProps) => {
   const defaultCenter: [number, number] = [33.8743, -84.3133];
-  const flyTo: [number, number] | null = userLocation ? [userLocation.lat, userLocation.lng] : null;
+  const validLocation = userLocation && !isNaN(userLocation.lat) && !isNaN(userLocation.lng) ? userLocation : null;
+  const flyTo: [number, number] | null = validLocation ? [validLocation.lat, validLocation.lng] : null;
 
   return (
     <MapContainer center={defaultCenter} zoom={12} className="h-full w-full" style={{ minHeight: "400px" }} scrollWheelZoom>
