@@ -108,20 +108,13 @@ export async function voteOnReport(
     _serverAvailable = false;
   }
 
-  // Direct Supabase fallback — increment the appropriate column
-  const column = voteType === "up" ? "upvotes" : "downvotes";
-  const { data: current, error: fetchErr } = await supabase
-    .from("pharmacy_reports")
-    .select(column)
-    .eq("id", id)
-    .single();
-  if (fetchErr) throw new Error(fetchErr.message);
-
-  const { error: updateErr } = await supabase
-    .from("pharmacy_reports")
-    .update({ [column]: ((current as Record<string, number>)[column] ?? 0) + 1 })
-    .eq("id", id);
-  if (updateErr) throw new Error(updateErr.message);
+  // Direct Supabase fallback — call the SECURITY DEFINER RPC
+  // (direct UPDATE is blocked by RLS; the RPC is granted to anon)
+  const { error: rpcErr } = await supabase.rpc("vote_report", {
+    report_id: id,
+    vote_type: voteType === "up" ? "up" : "down",
+  });
+  if (rpcErr) throw new Error(rpcErr.message);
 }
 
 // ═══════════════════════════════════════════════════════════════
