@@ -3,47 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 type PharmacyReport = Tables<"pharmacy_reports">;
 
-const API_BASE = "/api";
-
-// ── Server-proxy auto-detection ───────────────────────────────
-// null = not checked yet, true = server available, false = use Supabase directly
-let _serverAvailable: boolean | null = null;
-
-/** Try a server-proxy fetch. Returns the JSON on success,
- *  or `null` if the server isn't there (HTML / network error). */
-async function tryServerJson<T>(input: RequestInfo, init?: RequestInit): Promise<T | null> {
-  try {
-    const res = await fetch(input, init);
-    const ct = res.headers.get("content-type") ?? "";
-    if (!ct.includes("json")) return null;          // got HTML → no server
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? `Server error ${res.status}`);
-    }
-    return (await res.json()) as T;
-  } catch (err) {
-    // Network-level failure (server not running)
-    if (err instanceof TypeError) return null;
-    throw err;                                       // re-throw app errors
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════
 //  Reports
 // ═══════════════════════════════════════════════════════════════
 
 export async function fetchReports(): Promise<PharmacyReport[]> {
-  // If we already know the server isn't there, go direct
-  if (_serverAvailable !== false) {
-    const json = await tryServerJson<PharmacyReport[]>(`${API_BASE}/reports`);
-    if (json !== null) {
-      _serverAvailable = true;
-      return json;
-    }
-    _serverAvailable = false;                        // remember for future calls
-  }
-
-  // Direct Supabase fallback
   const { data, error } = await supabase
     .from("pharmacy_reports")
     .select("*")
@@ -55,66 +19,32 @@ export async function fetchReports(): Promise<PharmacyReport[]> {
 export async function createReport(
   report: Record<string, unknown>,
 ): Promise<PharmacyReport> {
-  // Try Express server first (rate-limited + validated)
-  if (_serverAvailable !== false) {
-    const json = await tryServerJson<PharmacyReport>(`${API_BASE}/reports`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(report),
-    });
-    if (json !== null) {
-      _serverAvailable = true;
-      return json;
-    }
-    _serverAvailable = false;
-  }
-
-  // Direct Supabase fallback
-  const { data, error } = await supabase
-    .from("pharmacy_reports")
-    .insert({
-      type: report.type as string,
-      pharmacy_name: report.pharmacy_name as string,
-      medication: report.medication as string,
-      dose: report.dose as string,
-      status: report.status as string,
-      address: (report.address as string) || null,
-      website_url: (report.website_url as string) || null,
-      notes: (report.notes as string) || null,
-      lat: (report.lat as number) ?? null,
-      lng: (report.lng as number) ?? null,
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc("create_report", {
+    p_type: report.type as string,
+    p_pharmacy_name: report.pharmacy_name as string,
+    p_medication: report.medication as string,
+    p_dose: report.dose as string,
+    p_status: report.status as string,
+    p_address: (report.address as string) || null,
+    p_website_url: (report.website_url as string) || null,
+    p_notes: (report.notes as string) || null,
+    p_lat: (report.lat as number) ?? null,
+    p_lng: (report.lng as number) ?? null,
+  });
   if (error) throw new Error(error.message);
-  return data as PharmacyReport;
+  const rows = data as unknown as PharmacyReport[];
+  return rows[0];
 }
 
 export async function voteOnReport(
   id: string,
   voteType: "up" | "down",
 ): Promise<void> {
-  // Try Express server first
-  if (_serverAvailable !== false) {
-    const json = await tryServerJson(`${API_BASE}/reports/${id}/vote`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: voteType }),
-    });
-    if (json !== null) {
-      _serverAvailable = true;
-      return;
-    }
-    _serverAvailable = false;
-  }
-
-  // Direct Supabase fallback — call the SECURITY DEFINER RPC
-  // (direct UPDATE is blocked by RLS; the RPC is granted to anon)
-  const { error: rpcErr } = await supabase.rpc("vote_report", {
+  const { error } = await supabase.rpc("vote_report", {
     report_id: id,
-    vote_type: voteType === "up" ? "up" : "down",
+    vote_type: voteType,
   });
-  if (rpcErr) throw new Error(rpcErr.message);
+  if (error) throw new Error(error.message);
 }
 
 // ═══════════════════════════════════════════════════════════════

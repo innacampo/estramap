@@ -70,6 +70,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_report: {
+        Args: {
+          p_type: string
+          p_pharmacy_name: string
+          p_medication: string
+          p_dose: string
+          p_status: string
+          p_address?: string | null
+          p_website_url?: string | null
+          p_notes?: string | null
+          p_lat?: number | null
+          p_lng?: number | null
+        }
+        Returns: {
+          address: string | null
+          created_at: string
+          dose: string
+          downvotes: number
+          id: string
+          lat: number | null
+          lng: number | null
+          medication: string
+          notes: string | null
+          pharmacy_name: string
+          status: string
+          type: string
+          upvotes: number
+          website_url: string | null
+        }[]
+      }
       vote_report: {
         Args: { report_id: string; vote_type: string }
         Returns: undefined
