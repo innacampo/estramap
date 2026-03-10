@@ -224,3 +224,13 @@
 .leaflet-popup-tip {
   background: hsl(var(--card)) !important;
 }
+
+/* Ko-fi widget — pin to bottom-right corner */
+.floating-chat-kofi-popup-iframe,
+.floatingchat-container-wrap,
+.floatingchat-container-wrap-mo498 {
+  right: 16px !important;
+  left: auto !important;
+  bottom: 16px !important;
+  z-index: 9999 !important;
+}
